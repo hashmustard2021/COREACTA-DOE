@@ -3,8 +3,8 @@ from django.db import models
 class Project(models.Model):
     name  = models.CharField(max_length=200)
     slogan = models.CharField(max_length=200, default="감이 아니라 근거로 실험하세요.")
-    run_budget = models.PositiveSmallIntegerfield(default=8) # v1 fixed
-    response_name = models.Charfield(max_length=50, default="수율(Yield, %)")
+    run_budget = models.PositiveSmallIntegerField(default=8) # v1 fixed
+    response_name = models.CharField(max_length=50, default="수율(Yield, %)")
     goal = models.CharField(max_length=20, default="maximize")
 
     created_at = models.DateTimeField(auto_now_add=True)
