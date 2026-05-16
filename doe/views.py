@@ -1,3 +1,7 @@
+import csv
+from io import StringIO
+
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -49,6 +53,32 @@ def create_or_update_result(request, project_id):
 def report(request, project_id):
     project = get_project(project_id)
     return Response(build_report(project))
+
+
+@api_view(["GET"])
+def download_design_csv(request, project_id):
+    project = get_project(project_id)
+    factors = list(project.factors.order_by("idx"))
+    runs = project.design_runs.select_related("result").order_by("run_order")
+
+    buffer = StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(["Run", *[factor.display_name for factor in factors], "수율(Yield, %)"])
+
+    for run in runs:
+        row = [run.run_order]
+        row.extend(run.values.get(factor.key, "") for factor in factors)
+        row.append(run.result.response if hasattr(run, "result") else "")
+        writer.writerow(row)
+
+    response = HttpResponse(
+        buffer.getvalue().encode("utf-8-sig"),
+        content_type="text/csv; charset=utf-8",
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="coreacta_project_{project.id}_design.csv"'
+    )
+    return response
 
 
 def get_project(project_id):

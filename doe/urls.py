@@ -7,6 +7,11 @@ urlpatterns = [
     path("projects/", views.create_project, name="create-project"),
     path("projects/<int:project_id>/design/", views.create_design, name="create-design"),
     path(
+        "projects/<int:project_id>/design.csv/",
+        views.download_design_csv,
+        name="download-design-csv",
+    ),
+    path(
         "projects/<int:project_id>/results/",
         views.create_or_update_result,
         name="create-or-update-result",
