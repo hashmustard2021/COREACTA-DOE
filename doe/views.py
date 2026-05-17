@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -23,36 +23,56 @@ from .services import (
 @api_view(["POST"])
 def create_project(request):
     serializer = ProjectSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
+    if not serializer.is_valid():
+        return api_error(format_validation_errors(serializer.errors))
+
     project = serializer.save()
-    return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
+    return api_success(ProjectSerializer(project).data, status_code=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
 def create_design(request, project_id):
-    project = get_project(project_id)
-    runs = create_fractional_factorial_design(project)
-    return Response(DesignRunSerializer(runs, many=True).data, status=status.HTTP_201_CREATED)
+    try:
+        project = get_project(project_id)
+        runs = create_fractional_factorial_design(project)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+    except ValueError as exc:
+        return api_error(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    return api_success(
+        DesignRunSerializer(runs, many=True).data,
+        status_code=status.HTTP_201_CREATED,
+    )
 
 
 @api_view(["POST"])
 def create_or_update_result(request, project_id):
-    project = get_project(project_id)
+    try:
+        project = get_project(project_id)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
     serializer = ResultUpsertSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
+    if not serializer.is_valid():
+        return api_error(format_validation_errors(serializer.errors))
 
     try:
         result = upsert_result(project, **serializer.validated_data)
     except ValueError as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return api_error(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
-    return Response(ResultSerializer(result).data)
+    return api_success(ResultSerializer(result).data)
 
 
 @api_view(["GET"])
 def report(request, project_id):
-    project = get_project(project_id)
-    return Response(build_report(project))
+    try:
+        project = get_project(project_id)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
+    return api_success(build_report(project))
 
 
 @api_view(["GET"])
@@ -85,6 +105,47 @@ def get_project(project_id):
     try:
         return Project.objects.get(pk=project_id)
     except Project.DoesNotExist:
-        from django.http import Http404
-
         raise Http404("Project not found.")
+
+
+def api_success(data, status_code=status.HTTP_200_OK, message=""):
+    return Response(
+        {
+            "success": True,
+            "data": data,
+            "message": message,
+        },
+        status=status_code,
+    )
+
+
+def api_error(message, status_code=status.HTTP_400_BAD_REQUEST):
+    return Response(
+        {
+            "success": False,
+            "data": None,
+            "message": message,
+        },
+        status=status_code,
+    )
+
+
+def format_validation_errors(errors):
+    messages = []
+
+    def collect(value, path=""):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                collect(child, f"{path}.{key}" if path else str(key))
+            return
+
+        if isinstance(value, list):
+            for idx, child in enumerate(value):
+                child_path = f"{path}[{idx}]" if path else str(idx)
+                collect(child, child_path)
+            return
+
+        messages.append(f"{path}: {value}" if path else str(value))
+
+    collect(errors)
+    return "; ".join(messages) if messages else "Validation error."

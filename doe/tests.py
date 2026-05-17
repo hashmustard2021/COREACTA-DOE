@@ -52,6 +52,15 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(len(project["factors"]), 4)
         self.assertEqual(project["factors"][0]["display_name"], "온도(Temperature, °C)")
 
+    def test_project_validation_error_uses_common_response_format(self):
+        response = self.client.post("/api/projects/", {"name": ""}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
+        self.assertIsNone(response.data["data"])
+        self.assertIsInstance(response.data["message"], str)
+        self.assertNotEqual(response.data["message"], "")
+
     def test_design_creation_api_creates_8_runs(self):
         project = self.create_project()
         design = self.create_design(project["id"])
@@ -73,8 +82,10 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(Decimal(response.data["response"]), Decimal("42.0000"))
-        self.assertEqual(response.data["run_order"], 1)
+        self.assertTrue(response.data["success"])
+        result = response.data["data"]
+        self.assertEqual(Decimal(result["response"]), Decimal("42.0000"))
+        self.assertEqual(result["run_order"], 1)
 
     def test_report_api_main_effects_and_next_runs(self):
         project = self.create_project()
@@ -84,21 +95,23 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         response = self.client.get(f"/api/projects/{project['id']}/report/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
         self.assertEqual(response.data["message"], "")
+        report = response.data["data"]
 
         effects = {
             item["factor_key"]: Decimal(str(item["effect"]))
-            for item in response.data["effects"]
+            for item in report["effects"]
         }
         self.assertEqual(effects["A"], Decimal("5.5"))
         self.assertEqual(effects["B"], Decimal("3.0"))
         self.assertEqual(effects["C"], Decimal("9.0"))
         self.assertEqual(effects["D"], Decimal("1.5"))
 
-        top_drivers = response.data["top_drivers"]
+        top_drivers = report["top_drivers"]
         self.assertEqual([item["factor_key"] for item in top_drivers], ["C", "A", "B", "D"])
 
-        recommendations = response.data["recommendations"]
+        recommendations = report["recommendations"]
         self.assertEqual(len(recommendations), 3)
         self.assertEqual(recommendations[0]["conditions"]["C"]["direction"], "HIGH")
         self.assertEqual(recommendations[0]["conditions"]["A"]["direction"], "HIGH")
@@ -108,12 +121,16 @@ class SuzukiCouplingDoeApiTests(APITestCase):
     def create_project(self):
         response = self.client.post("/api/projects/", self.project_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        return response.data
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["message"], "")
+        return response.data["data"]
 
     def create_design(self, project_id):
         response = self.client.post(f"/api/projects/{project_id}/design/")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        return response.data
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["message"], "")
+        return response.data["data"]
 
     def submit_results(self, project_id):
         for run_order, result_value in enumerate(self.result_values, start=1):
@@ -123,3 +140,4 @@ class SuzukiCouplingDoeApiTests(APITestCase):
                 format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertTrue(response.data["success"])
