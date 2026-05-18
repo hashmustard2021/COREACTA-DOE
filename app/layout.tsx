@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "E-commerce Admin Dashboard",
-  description: "Korean e-commerce admin analytics dashboard",
+  title: "Coreacta DOE",
+  description: "Coreacta DOE reaction optimization MVP",
 };
 
 export default function RootLayout({
