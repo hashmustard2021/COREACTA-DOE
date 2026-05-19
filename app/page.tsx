@@ -194,17 +194,15 @@ export default function Home() {
         throw new Error("Enter at least one yield value.");
       }
 
-      await Promise.all(
-        filledRuns.map((run) =>
-          apiRequest(`/api/projects/${project.id}/results/`, {
-            method: "POST",
-            body: JSON.stringify({
-              run_order: run.run_order,
-              response: yields[run.run_order],
-            }),
+      for (const run of filledRuns) {
+        await apiRequest(`/api/projects/${project.id}/results/`, {
+          method: "POST",
+          body: JSON.stringify({
+            run_order: run.run_order,
+            response: yields[run.run_order],
           }),
-        ),
-      );
+        });
+      }
 
       const nextReport = await apiRequest<Report>(`/api/projects/${project.id}/report/`);
       setReport(nextReport);

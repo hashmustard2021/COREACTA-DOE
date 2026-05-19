@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 
+from django.db import OperationalError
 from django.http import Http404, HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -59,6 +60,11 @@ def create_or_update_result(request, project_id):
 
     try:
         result = upsert_result(project, **serializer.validated_data)
+    except OperationalError:
+        return api_error(
+            "Database is busy. Please retry.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     except ValueError as exc:
         return api_error(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
