@@ -230,6 +230,44 @@ export default function Home() {
     }
   }
 
+  async function handleDownloadCsv() {
+    if (!project) return;
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${project.id}/design.csv/`,
+      );
+
+      if (!response.ok) {
+        let message = "CSV download failed.";
+        const contentType = response.headers.get("Content-Type") ?? "";
+        if (contentType.includes("application/json")) {
+          const body = (await response.json()) as Partial<ApiResponse<null>>;
+          message = body.message || message;
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `coreacta-doe-design-project-${project.id}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText("CSV downloaded.");
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "CSV download failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -311,6 +349,14 @@ export default function Home() {
             <span>Design Table</span>
             <h2>{project ? `${project.name} · Project ${project.id}` : "No design yet"}</h2>
           </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleDownloadCsv}
+            disabled={!project || isBusy}
+          >
+            CSV 다운로드
+          </button>
         </div>
 
         <div className="table-wrap">
