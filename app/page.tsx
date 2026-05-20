@@ -106,12 +106,20 @@ const defaultFactors: FactorInput[] = [
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    mode: "cors",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
   });
-  const body = (await response.json()) as ApiResponse<T | null>;
+
+  let body: ApiResponse<T | null>;
+  try {
+    body = (await response.json()) as ApiResponse<T | null>;
+  } catch {
+    throw new Error(`API did not return JSON. HTTP ${response.status}`);
+  }
 
   if (!response.ok || !body.success) {
     throw new Error(body.message || `API request failed: ${response.status}`);
@@ -239,6 +247,10 @@ export default function Home() {
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/projects/${project.id}/design.csv/`,
+        {
+          mode: "cors",
+          cache: "no-store",
+        },
       );
 
       if (!response.ok) {
