@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
+import { Download, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -147,8 +148,12 @@ export default function Home() {
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const factorKeys = useMemo(() => factors.map((factor) => "ABCD"[factor.idx - 1]), [factors]);
+  const factorKeys = useMemo(
+    () => factors.map((factor) => "ABCD"[factor.idx - 1]),
+    [factors],
+  );
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
     setFactors((current) =>
@@ -156,6 +161,15 @@ export default function Home() {
         itemIndex === index ? { ...factor, [field]: value } : factor,
       ),
     );
+  }
+
+  function focusNextYieldInput(
+    event: KeyboardEvent<HTMLInputElement>,
+    index: number,
+  ) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    yieldInputRefs.current[index + 1]?.focus();
   }
 
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
@@ -282,13 +296,17 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <div>
+      <section className="hero-card">
+        <div className="hero-copy">
+          <span>Reaction Optimization</span>
           <h1>Coreacta DOE</h1>
           <p>감이 아니라 근거로 실험하세요.</p>
         </div>
-        <span className="api-base">{API_BASE_URL}</span>
-      </header>
+        <div className="hero-meta">
+          <span>API</span>
+          <strong>{API_BASE_URL}</strong>
+        </div>
+      </section>
 
       {(errorText || statusText) && (
         <div className={errorText ? "notice error" : "notice"}>
@@ -296,13 +314,14 @@ export default function Home() {
         </div>
       )}
 
-      <form className="section setup-section" onSubmit={handleGenerateDesign}>
-        <div className="section-heading">
+      <form className="card setup-card" onSubmit={handleGenerateDesign}>
+        <div className="card-heading">
           <div>
             <span>Project Setup</span>
             <h2>Reaction and factors</h2>
           </div>
           <button type="submit" disabled={isBusy}>
+            <Play size={16} />
             {isBusy ? "Working..." : "Generate Design"}
           </button>
         </div>
@@ -341,11 +360,13 @@ export default function Home() {
                 onChange={(event) => updateFactor(index, "unit", event.target.value)}
               />
               <input
+                className="numeric-input"
                 value={factor.low}
                 onChange={(event) => updateFactor(index, "low", event.target.value)}
                 required
               />
               <input
+                className="numeric-input"
                 value={factor.high}
                 onChange={(event) => updateFactor(index, "high", event.target.value)}
                 required
@@ -355,8 +376,8 @@ export default function Home() {
         </div>
       </form>
 
-      <section className="section">
-        <div className="section-heading">
+      <section className="card">
+        <div className="card-heading">
           <div>
             <span>Design Table</span>
             <h2>{project ? `${project.name} · Project ${project.id}` : "No design yet"}</h2>
@@ -367,6 +388,7 @@ export default function Home() {
             onClick={handleDownloadCsv}
             disabled={!project || isBusy}
           >
+            <Download size={16} />
             CSV 다운로드
           </button>
         </div>
@@ -381,24 +403,84 @@ export default function Home() {
                     {factor.name_kr}({factor.name_en}, {factor.unit})
                   </th>
                 ))}
-                <th>Yield (%)</th>
               </tr>
             </thead>
             <tbody>
               {designRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>Generate a design to view 8 runs.</td>
+                  <td colSpan={5}>Generate a design to view 8 runs.</td>
                 </tr>
               ) : (
                 designRuns.map((run) => (
                   <tr key={run.id}>
-                    <td>{run.run_order}</td>
+                    <td>
+                      <span className="run-badge">Run {run.run_order}</span>
+                    </td>
                     {factorKeys.map((factorKey) => (
-                      <td key={factorKey}>{formatFactorValue(run, factorKey)}</td>
+                      <td className="numeric-cell" key={factorKey}>
+                        {formatFactorValue(run, factorKey)}
+                      </td>
                     ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-heading">
+          <div>
+            <span>Results Input</span>
+            <h2>Yield by run</h2>
+          </div>
+          <div className="button-group">
+            <button
+              type="button"
+              onClick={handleSubmitResults}
+              disabled={!project || designRuns.length === 0 || isBusy}
+            >
+              <Send size={16} />
+              Submit Results
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleRefreshReport}
+              disabled={!project || isBusy}
+            >
+              <RefreshCw size={16} />
+              Refresh Report
+            </button>
+          </div>
+        </div>
+
+        <div className="table-wrap compact-wrap">
+          <table className="results-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>수율(Yield, %)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {designRuns.length === 0 ? (
+                <tr>
+                  <td colSpan={2}>Generate a design before entering results.</td>
+                </tr>
+              ) : (
+                designRuns.map((run, index) => (
+                  <tr key={run.id}>
+                    <td>
+                      <span className="run-badge">Run {run.run_order}</span>
+                    </td>
                     <td>
                       <input
-                        className="yield-input"
+                        ref={(element) => {
+                          yieldInputRefs.current[index] = element;
+                        }}
+                        className="yield-input numeric-input"
                         inputMode="decimal"
                         value={yields[run.run_order] ?? ""}
                         onChange={(event) =>
@@ -407,7 +489,8 @@ export default function Home() {
                             [run.run_order]: event.target.value,
                           }))
                         }
-                        placeholder="Yield"
+                        onKeyDown={(event) => focusNextYieldInput(event, index)}
+                        placeholder="예: 61.5"
                       />
                     </td>
                   </tr>
@@ -416,53 +499,35 @@ export default function Home() {
             </tbody>
           </table>
         </div>
-
-        <div className="actions-row">
-          <button
-            type="button"
-            onClick={handleSubmitResults}
-            disabled={!project || designRuns.length === 0 || isBusy}
-          >
-            Submit Results
-          </button>
-          <button type="button" onClick={handleRefreshReport} disabled={!project || isBusy}>
-            Refresh Report
-          </button>
-        </div>
       </section>
 
-      <section className="section report-section">
-        <div className="section-heading">
+      <section className="card report-card">
+        <div className="card-heading">
           <div>
             <span>Report</span>
-            <h2>Top drivers and next runs</h2>
+            <h2>Top drivers and recommended next runs</h2>
           </div>
+          <FlaskConical className="report-icon" size={24} />
         </div>
 
         {!report ? (
           <p className="empty-state">Submit results to calculate the report.</p>
         ) : (
-          <div className="report-grid">
+          <div className="report-layout">
             <div>
               <h3>Top Drivers</h3>
-              <table className="compact-table">
-                <thead>
-                  <tr>
-                    <th>Factor</th>
-                    <th>Effect</th>
-                    <th>Direction</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.top_drivers.map((effect) => (
-                    <tr key={effect.factor_key}>
-                      <td>{effect.display_name}</td>
-                      <td>{formatEffect(effect.effect)}</td>
-                      <td>{effect.direction}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="driver-grid">
+                {report.top_drivers.map((effect, index) => (
+                  <article className="driver-card" key={effect.factor_key}>
+                    <span>#{index + 1}</span>
+                    <strong>{effect.display_name}</strong>
+                    <div>
+                      <b>{formatEffect(effect.effect)}</b>
+                      <em>{effect.direction}</em>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -479,11 +544,15 @@ export default function Home() {
               ) : (
                 report.recommendations.map((recommendation) => (
                   <article className="recommendation" key={recommendation.rank}>
-                    <strong>#{recommendation.rank} {recommendation.strategy}</strong>
-                    <div>
+                    <div className="recommendation-title">
+                      <span>#{recommendation.rank}</span>
+                      <strong>{recommendation.strategy}</strong>
+                    </div>
+                    <div className="condition-grid">
                       {Object.entries(recommendation.conditions).map(([key, condition]) => (
                         <span key={key}>
-                          {key}: {condition.direction} · {condition.value}
+                          <b>{key}</b>
+                          {condition.direction} · {condition.value}
                         </span>
                       ))}
                     </div>
