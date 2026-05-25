@@ -308,7 +308,7 @@ tbody tr:last-child td {
 }
 
 .report-card {
-  margin-bottom: 0;
+  margin-bottom: 16px;
 }
 
 .report-icon {
@@ -442,6 +442,41 @@ tbody tr:last-child td {
   color: var(--muted);
 }
 
+.graph-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart-card {
+  margin-bottom: 0;
+}
+
+.chart-wrap {
+  width: 100%;
+  height: 320px;
+}
+
+.effect-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.effect-legend span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 7px 9px;
+}
+
+.effect-legend b {
+  color: var(--text);
+}
+
 @media (max-width: 920px) {
   .hero-card,
   .card-heading {
@@ -454,7 +489,8 @@ tbody tr:last-child td {
   }
 
   .driver-grid,
-  .condition-grid {
+  .condition-grid,
+  .graph-section {
     grid-template-columns: 1fr;
   }
 }

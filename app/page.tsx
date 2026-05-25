@@ -2,6 +2,19 @@
 
 import { FormEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
 import { Download, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -138,6 +151,12 @@ function formatEffect(effect: number | null) {
   return Number(effect).toFixed(2);
 }
 
+function effectDirectionLabel(effect: number) {
+  if (effect > 0) return "HIGH가 유리";
+  if (effect < 0) return "LOW가 유리";
+  return "NEUTRAL";
+}
+
 export default function Home() {
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
@@ -153,6 +172,35 @@ export default function Home() {
   const factorKeys = useMemo(
     () => factors.map((factor) => "ABCD"[factor.idx - 1]),
     [factors],
+  );
+  const mainEffectData = useMemo(() => {
+    if (!report) return [];
+
+    return report.top_drivers
+      .filter((effect) => effect.effect !== null)
+      .sort((a, b) => Math.abs(Number(b.effect)) - Math.abs(Number(a.effect)))
+      .map((effect) => {
+        const value = Number(effect.effect);
+        return {
+          key: effect.factor_key,
+          name: effect.display_name,
+          effect: value,
+          directionLabel: effectDirectionLabel(value),
+        };
+      });
+  }, [report]);
+  const yieldTrendData = useMemo(
+    () =>
+      designRuns
+        .map((run) => {
+          const yieldValue = yields[run.run_order] || run.result?.response || "";
+          return {
+            run: run.run_order,
+            yield: yieldValue.trim() ? Number(yieldValue) : null,
+          };
+        })
+        .filter((item) => item.yield !== null && Number.isFinite(item.yield)),
+    [designRuns, yields],
   );
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
@@ -562,6 +610,112 @@ export default function Home() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="graph-section">
+        <article className="card chart-card">
+          <div className="card-heading">
+            <div>
+              <span>Visualization</span>
+              <h2>Main Effect Analysis</h2>
+            </div>
+          </div>
+
+          {mainEffectData.length === 0 ? (
+            <p className="empty-state">시각화할 데이터가 충분하지 않습니다.</p>
+          ) : (
+            <>
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={mainEffectData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid stroke="#e6edf1" vertical={false} />
+                    <XAxis
+                      dataKey="key"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "#667586", fontSize: 12, fontWeight: 700 }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "#667586", fontSize: 12 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "rgba(15, 118, 110, 0.07)" }}
+                      formatter={(value) => [Number(value).toFixed(2), "Effect"]}
+                      labelFormatter={(label) => {
+                        const item = mainEffectData.find((effect) => effect.key === label);
+                        return item ? item.name : label;
+                      }}
+                    />
+                    <ReferenceLine y={0} stroke="#9aa7b3" />
+                    <Bar dataKey="effect" radius={[6, 6, 0, 0]}>
+                      {mainEffectData.map((item) => (
+                        <Cell
+                          key={item.key}
+                          fill={item.effect >= 0 ? "#0f766e" : "#b42318"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="effect-legend">
+                {mainEffectData.map((item) => (
+                  <span key={item.key}>
+                    <b>{item.key}</b> {item.directionLabel}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </article>
+
+        <article className="card chart-card">
+          <div className="card-heading">
+            <div>
+              <span>Visualization</span>
+              <h2>Yield Trend</h2>
+            </div>
+          </div>
+
+          {yieldTrendData.length === 0 ? (
+            <p className="empty-state">시각화할 데이터가 충분하지 않습니다.</p>
+          ) : (
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={yieldTrendData} margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
+                  <CartesianGrid stroke="#e6edf1" vertical={false} />
+                  <XAxis
+                    dataKey="run"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#667586", fontSize: 12 }}
+                    label={{ value: "Run number", position: "insideBottom", offset: -4 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#667586", fontSize: 12 }}
+                    label={{ value: "Yield (%)", angle: -90, position: "insideLeft" }}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`${Number(value).toFixed(2)}%`, "Yield"]}
+                    labelFormatter={(label) => `Run ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="yield"
+                    stroke="#0f766e"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: "#0f766e", strokeWidth: 0 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </article>
       </section>
     </main>
   );
