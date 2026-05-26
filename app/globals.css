@@ -195,6 +195,61 @@ input:focus {
   letter-spacing: 0;
 }
 
+.project-list-card {
+  padding-bottom: 14px;
+}
+
+.project-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.project-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 70px;
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--text);
+  text-align: left;
+}
+
+.project-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.project-item span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.project-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-item small,
+.project-item em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.project-item em {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafb;
+  padding: 5px 7px;
+  white-space: nowrap;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -490,7 +545,8 @@ tbody tr:last-child td {
 
   .driver-grid,
   .condition-grid,
-  .graph-section {
+  .graph-section,
+  .project-list {
     grid-template-columns: 1fr;
   }
 }
@@ -515,5 +571,9 @@ tbody tr:last-child td {
   .button-group button,
   .card-heading button {
     width: 100%;
+  }
+
+  .project-item {
+    grid-template-columns: 1fr;
   }
 }

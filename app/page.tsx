@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Download, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
 import {
   Bar,
@@ -38,6 +45,16 @@ type Project = {
   id: number;
   name: string;
   factors: Array<FactorInput & { id: number; display_name: string }>;
+};
+
+type ProjectListItem = {
+  project_id: number;
+  name: string;
+  created_at: string;
+  run_budget: number;
+  response_name: string;
+  factor_count: number;
+  result_count: number;
 };
 
 type DesignRun = {
@@ -80,6 +97,22 @@ type Report = {
   top_drivers: Effect[];
   message: string;
   recommendations: Recommendation[];
+};
+
+type ResultRecord = {
+  id: number;
+  run_order: number;
+  response: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectDetail = {
+  project: Project;
+  factors: Project["factors"];
+  design_runs: DesignRun[];
+  results: ResultRecord[];
 };
 
 const defaultFactors: FactorInput[] = [
@@ -167,6 +200,8 @@ export default function Home() {
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const factorKeys = useMemo(
@@ -202,6 +237,10 @@ export default function Home() {
         .filter((item) => item.yield !== null && Number.isFinite(item.yield)),
     [designRuns, yields],
   );
+
+  useEffect(() => {
+    void loadProjects();
+  }, []);
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
     setFactors((current) =>
@@ -245,6 +284,7 @@ export default function Home() {
       setDesignRuns(design);
       setYields({});
       setStatusText(`Project ${createdProject.id} design generated.`);
+      void loadProjects();
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to generate design.");
     } finally {
@@ -277,6 +317,7 @@ export default function Home() {
       const nextReport = await apiRequest<Report>(`/api/projects/${project.id}/report/`);
       setReport(nextReport);
       setStatusText(`${filledRuns.length} result(s) submitted.`);
+      void loadProjects();
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to submit results.");
     } finally {
@@ -342,6 +383,58 @@ export default function Home() {
     }
   }
 
+  async function loadProjects() {
+    setIsLoadingProjects(true);
+    try {
+      setProjectList(await apiRequest<ProjectListItem[]>("/api/projects/"));
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to load projects.");
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }
+
+  async function handleLoadProject(projectId: number) {
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const detail = await apiRequest<ProjectDetail>(`/api/projects/${projectId}/`);
+      const restoredYields: Record<number, string> = {};
+
+      for (const result of detail.results) {
+        restoredYields[result.run_order] = result.response;
+      }
+      for (const run of detail.design_runs) {
+        if (run.result && !restoredYields[run.run_order]) {
+          restoredYields[run.run_order] = run.result.response;
+        }
+      }
+
+      setProject(detail.project);
+      setProjectName(detail.project.name);
+      setFactors(
+        detail.factors.map((factor) => ({
+          idx: factor.idx,
+          name_kr: factor.name_kr,
+          name_en: factor.name_en,
+          unit: factor.unit,
+          low: String(factor.low),
+          high: String(factor.high),
+        })),
+      );
+      setDesignRuns(detail.design_runs);
+      setYields(restoredYields);
+      setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
+      setStatusText(`Project ${projectId} loaded.`);
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to load project.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="hero-card">
@@ -354,6 +447,47 @@ export default function Home() {
           <span>API</span>
           <strong>{API_BASE_URL}</strong>
         </div>
+      </section>
+
+      <section className="card project-list-card">
+        <div className="card-heading">
+          <div>
+            <span>Project List</span>
+            <h2>Saved DOE projects</h2>
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => void loadProjects()}
+            disabled={isLoadingProjects}
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
+        </div>
+
+        {projectList.length === 0 ? (
+          <p className="empty-state">No saved projects yet.</p>
+        ) : (
+          <div className="project-list">
+            {projectList.map((item) => (
+              <button
+                className={project?.id === item.project_id ? "project-item active" : "project-item"}
+                key={item.project_id}
+                type="button"
+                onClick={() => void handleLoadProject(item.project_id)}
+                disabled={isBusy}
+              >
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>Project {item.project_id}</small>
+                </span>
+                <em>{item.factor_count} factors</em>
+                <em>{item.result_count}/{item.run_budget} {item.response_name}</em>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {(errorText || statusText) && (

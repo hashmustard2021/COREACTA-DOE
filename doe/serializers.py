@@ -49,6 +49,38 @@ class ProjectSerializer(serializers.ModelSerializer):
         return project
 
 
+class ProjectListSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(source="id", read_only=True)
+    run_budget = serializers.SerializerMethodField()
+    response_name = serializers.SerializerMethodField()
+    factor_count = serializers.SerializerMethodField()
+    result_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = [
+            "project_id",
+            "name",
+            "created_at",
+            "run_budget",
+            "response_name",
+            "factor_count",
+            "result_count",
+        ]
+
+    def get_run_budget(self, obj):
+        return 8
+
+    def get_response_name(self, obj):
+        return "Yield"
+
+    def get_factor_count(self, obj):
+        return obj.factors.count()
+
+    def get_result_count(self, obj):
+        return obj.design_runs.filter(result__isnull=False).count()
+
+
 class DesignRunSerializer(serializers.ModelSerializer):
     result = serializers.SerializerMethodField()
 

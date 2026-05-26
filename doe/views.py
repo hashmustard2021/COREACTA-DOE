@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from .models import Project
 from .serializers import (
     DesignRunSerializer,
+    FactorSerializer,
+    ProjectListSerializer,
     ProjectSerializer,
     ResultSerializer,
     ResultUpsertSerializer,
@@ -21,14 +23,45 @@ from .services import (
 )
 
 
-@api_view(["POST"])
-def create_project(request):
+@api_view(["GET", "POST"])
+def projects(request):
+    if request.method == "GET":
+        queryset = Project.objects.order_by("-created_at")
+        return api_success(ProjectListSerializer(queryset, many=True).data)
+
     serializer = ProjectSerializer(data=request.data)
     if not serializer.is_valid():
         return api_error(format_validation_errors(serializer.errors))
 
     project = serializer.save()
     return api_success(ProjectSerializer(project).data, status_code=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+def project_detail(request, project_id):
+    try:
+        project = get_project(project_id)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
+    design_runs = project.design_runs.select_related("result").order_by("run_order")
+    results = ResultSerializer(
+        [
+            run.result
+            for run in design_runs
+            if hasattr(run, "result")
+        ],
+        many=True,
+    ).data
+
+    return api_success(
+        {
+            "project": ProjectSerializer(project).data,
+            "factors": FactorSerializer(project.factors.order_by("idx"), many=True).data,
+            "design_runs": DesignRunSerializer(design_runs, many=True).data,
+            "results": results,
+        }
+    )
 
 
 @api_view(["POST"])

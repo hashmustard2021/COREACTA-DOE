@@ -61,6 +61,36 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertIsInstance(response.data["message"], str)
         self.assertNotEqual(response.data["message"], "")
 
+    def test_project_list_and_detail_restore_design_and_results(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        list_response = self.client.get("/api/projects/")
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(list_response.data["success"])
+        projects = list_response.data["data"]
+        self.assertEqual(len(projects), 1)
+        self.assertEqual(projects[0]["project_id"], project["id"])
+        self.assertEqual(projects[0]["name"], "Suzuki coupling optimization")
+        self.assertEqual(projects[0]["run_budget"], 8)
+        self.assertEqual(projects[0]["response_name"], "Yield")
+        self.assertEqual(projects[0]["factor_count"], 4)
+        self.assertEqual(projects[0]["result_count"], 8)
+
+        detail_response = self.client.get(f"/api/projects/{project['id']}/")
+
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(detail_response.data["success"])
+        detail = detail_response.data["data"]
+        self.assertEqual(detail["project"]["id"], project["id"])
+        self.assertEqual(len(detail["factors"]), 4)
+        self.assertEqual(len(detail["design_runs"]), 8)
+        self.assertEqual(len(detail["results"]), 8)
+        self.assertEqual(detail["design_runs"][0]["run_order"], 1)
+        self.assertEqual(Decimal(detail["results"][0]["response"]), Decimal("42.0000"))
+
     def test_design_creation_api_creates_8_runs(self):
         project = self.create_project()
         design = self.create_design(project["id"])
