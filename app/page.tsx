@@ -99,6 +99,15 @@ type Report = {
   recommendations: Recommendation[];
 };
 
+type SurfaceData = {
+  x_factor: string;
+  y_factor: string;
+  x_values: number[];
+  y_values: number[];
+  z_matrix: number[][];
+  model: string;
+};
+
 type ResultRecord = {
   id: number;
   run_order: number;
@@ -190,6 +199,18 @@ function effectDirectionLabel(effect: number) {
   return "NEUTRAL";
 }
 
+function factorDisplayName(factor: FactorInput) {
+  return `${factor.name_kr}(${factor.name_en}${factor.unit ? `, ${factor.unit}` : ""})`;
+}
+
+function heatColor(value: number, min: number, max: number) {
+  if (max === min) return "hsl(174, 50%, 60%)";
+  const ratio = (value - min) / (max - min);
+  const hue = 205 - ratio * 175;
+  const lightness = 88 - ratio * 38;
+  return `hsl(${hue}, 70%, ${lightness}%)`;
+}
+
 export default function Home() {
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
@@ -202,6 +223,9 @@ export default function Home() {
   const [isBusy, setIsBusy] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
+  const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
+  const [surfaceXFactor, setSurfaceXFactor] = useState(factorDisplayName(defaultFactors[0]));
+  const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const factorKeys = useMemo(
@@ -237,6 +261,14 @@ export default function Home() {
         .filter((item) => item.yield !== null && Number.isFinite(item.yield)),
     [designRuns, yields],
   );
+  const surfaceScale = useMemo(() => {
+    if (!surfaceData) return { min: 0, max: 0 };
+    const values = surfaceData.z_matrix.flat();
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+    };
+  }, [surfaceData]);
 
   useEffect(() => {
     void loadProjects();
@@ -265,6 +297,7 @@ export default function Home() {
     setErrorText("");
     setStatusText("");
     setReport(null);
+    setSurfaceData(null);
 
     try {
       const createdProject = await apiRequest<Project>("/api/projects/", {
@@ -283,6 +316,8 @@ export default function Home() {
       setProject(createdProject);
       setDesignRuns(design);
       setYields({});
+      setSurfaceXFactor(factorDisplayName(factors[0]));
+      setSurfaceYFactor(factorDisplayName(factors[2] ?? factors[1]));
       setStatusText(`Project ${createdProject.id} design generated.`);
       void loadProjects();
     } catch (error) {
@@ -316,6 +351,7 @@ export default function Home() {
 
       const nextReport = await apiRequest<Report>(`/api/projects/${project.id}/report/`);
       setReport(nextReport);
+      setSurfaceData(null);
       setStatusText(`${filledRuns.length} result(s) submitted.`);
       void loadProjects();
     } catch (error) {
@@ -450,22 +486,47 @@ export default function Home() {
 
       setProject(detail.project);
       setProjectName(detail.project.name);
-      setFactors(
-        detail.factors.map((factor) => ({
+      const restoredFactors = detail.factors.map((factor) => ({
           idx: factor.idx,
           name_kr: factor.name_kr,
           name_en: factor.name_en,
           unit: factor.unit,
           low: String(factor.low),
           high: String(factor.high),
-        })),
-      );
+        }));
+      setFactors(restoredFactors);
+      setSurfaceXFactor(factorDisplayName(restoredFactors[0]));
+      setSurfaceYFactor(factorDisplayName(restoredFactors[2] ?? restoredFactors[1]));
       setDesignRuns(detail.design_runs);
       setYields(restoredYields);
       setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
+      setSurfaceData(null);
       setStatusText(`Project ${projectId} loaded.`);
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to load project.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleLoadSurface() {
+    if (!project) return;
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const params = new URLSearchParams({
+        x_factor: surfaceXFactor,
+        y_factor: surfaceYFactor,
+      });
+      setSurfaceData(
+        await apiRequest<SurfaceData>(`/api/projects/${project.id}/surface/?${params}`),
+      );
+      setStatusText("Contour plot updated.");
+    } catch (error) {
+      setSurfaceData(null);
+      setErrorText(error instanceof Error ? error.message : "Failed to load surface data.");
     } finally {
       setIsBusy(false);
     }
@@ -894,6 +955,83 @@ export default function Home() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          )}
+        </article>
+
+        <article className="card chart-card contour-card">
+          <div className="card-heading">
+            <div>
+              <span>RSM MVP</span>
+              <h2>Contour Plot</h2>
+            </div>
+            <button
+              type="button"
+              onClick={handleLoadSurface}
+              disabled={!project || isBusy}
+            >
+              <RefreshCw size={16} />
+              Update Surface
+            </button>
+          </div>
+
+          <div className="surface-controls">
+            <label>
+              <span>X factor</span>
+              <select
+                value={surfaceXFactor}
+                onChange={(event) => setSurfaceXFactor(event.target.value)}
+              >
+                {factors.map((factor) => (
+                  <option key={factor.idx} value={factorDisplayName(factor)}>
+                    {factorDisplayName(factor)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Y factor</span>
+              <select
+                value={surfaceYFactor}
+                onChange={(event) => setSurfaceYFactor(event.target.value)}
+              >
+                {factors.map((factor) => (
+                  <option key={factor.idx} value={factorDisplayName(factor)}>
+                    {factorDisplayName(factor)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {!surfaceData ? (
+            <p className="empty-state">시각화할 데이터가 충분하지 않습니다.</p>
+          ) : (
+            <div className="surface-layout">
+              <div className="surface-y-label">{surfaceData.y_factor}</div>
+              <div className="surface-plot">
+                {[...surfaceData.z_matrix].reverse().map((row, rowIndex) =>
+                  row.map((value, columnIndex) => (
+                    <span
+                      className="surface-cell"
+                      key={`${rowIndex}-${columnIndex}`}
+                      style={{
+                        background: heatColor(value, surfaceScale.min, surfaceScale.max),
+                      }}
+                      title={`${surfaceData.x_factor}: ${surfaceData.x_values[columnIndex].toFixed(2)}, ${surfaceData.y_factor}: ${surfaceData.y_values[surfaceData.y_values.length - 1 - rowIndex].toFixed(2)}, predicted yield: ${value.toFixed(2)}`}
+                    />
+                  )),
+                )}
+              </div>
+              <div className="surface-x-label">{surfaceData.x_factor}</div>
+              <div className="surface-scale">
+                <span>{surfaceScale.min.toFixed(2)}</span>
+                <div />
+                <span>{surfaceScale.max.toFixed(2)}</span>
+              </div>
+              <p className="surface-note">
+                Predicted yield by {surfaceData.model}
+              </p>
             </div>
           )}
         </article>

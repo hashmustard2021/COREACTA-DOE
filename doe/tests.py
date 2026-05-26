@@ -164,6 +164,30 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertTrue(response.content.startswith(b"%PDF"))
         self.assertGreater(len(response.content), 1000)
 
+    def test_surface_api_returns_grid_for_suzuki_data(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        response = self.client.get(
+            f"/api/projects/{project['id']}/surface/",
+            {
+                "x_factor": "온도(Temperature, °C)",
+                "y_factor": "촉매량(Catalyst loading, mol%)",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        surface = response.data["data"]
+        self.assertEqual(surface["x_factor"], "온도(Temperature, °C)")
+        self.assertEqual(surface["y_factor"], "촉매량(Catalyst loading, mol%)")
+        self.assertEqual(len(surface["x_values"]), 11)
+        self.assertEqual(len(surface["y_values"]), 11)
+        self.assertEqual(len(surface["z_matrix"]), 11)
+        self.assertEqual(len(surface["z_matrix"][0]), 11)
+        self.assertIsInstance(surface["z_matrix"][0][0], float)
+
     def create_project(self):
         response = self.client.post("/api/projects/", self.project_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

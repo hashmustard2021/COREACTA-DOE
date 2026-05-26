@@ -123,7 +123,6 @@ def calculate_main_effects(project, factors):
 
 
 def recommend_next_runs(factors, top_drivers):
-    factor_map = {factor.key: factor for factor in factors}
     valid_effects = [effect for effect in top_drivers if effect["effect"] is not None]
     if len(valid_effects) < 2:
         return []
@@ -191,3 +190,98 @@ def recommendation_strategy(rank, top1, top2):
 
 def mean(values):
     return sum(values, Decimal("0")) / Decimal(len(values))
+
+
+def build_response_surface(project, x_factor_name, y_factor_name, grid_size=11):
+    factors = list(project.factors.order_by("idx"))
+    x_factor = find_factor(factors, x_factor_name)
+    y_factor = find_factor(factors, y_factor_name)
+
+    if not x_factor or not y_factor:
+        raise ValueError("Selected factor was not found.")
+    if x_factor.id == y_factor.id:
+        raise ValueError("Choose two different factors.")
+
+    observations = []
+    for run in project.design_runs.select_related("result").order_by("run_order"):
+        if not hasattr(run, "result"):
+            continue
+
+        x_level = Decimal(str(run.levels.get(x_factor.key, 0)))
+        y_level = Decimal(str(run.levels.get(y_factor.key, 0)))
+        observations.append(
+            {
+                "x": x_level,
+                "y": y_level,
+                "xy": x_level * y_level,
+                "response": run.result.response,
+            }
+        )
+
+    if len(observations) < 4:
+        raise ValueError("시각화할 데이터가 충분하지 않습니다.")
+
+    intercept = mean([item["response"] for item in observations])
+    x_coef = mean([item["response"] * item["x"] for item in observations])
+    y_coef = mean([item["response"] * item["y"] for item in observations])
+    xy_coef = mean([item["response"] * item["xy"] for item in observations])
+
+    x_values = grid_values(x_factor.low, x_factor.high, grid_size)
+    y_values = grid_values(y_factor.low, y_factor.high, grid_size)
+    z_matrix = []
+
+    for y_value in y_values:
+        y_coded = code_value(y_factor, y_value)
+        row = []
+        for x_value in x_values:
+            x_coded = code_value(x_factor, x_value)
+            predicted = (
+                intercept
+                + x_coef * x_coded
+                + y_coef * y_coded
+                + xy_coef * x_coded * y_coded
+            )
+            row.append(round(float(predicted), 4))
+        z_matrix.append(row)
+
+    return {
+        "x_factor": x_factor.display_name,
+        "y_factor": y_factor.display_name,
+        "x_values": [float(value) for value in x_values],
+        "y_values": [float(value) for value in y_values],
+        "z_matrix": z_matrix,
+        "model": "coded linear + x*y interaction approximation",
+    }
+
+
+def find_factor(factors, value):
+    if not value:
+        return None
+
+    normalized = str(value).strip()
+    for factor in factors:
+        if normalized in {
+            factor.key,
+            factor.name_kr,
+            factor.name_en,
+            factor.display_name,
+            str(factor.idx),
+        }:
+            return factor
+    return None
+
+
+def grid_values(low, high, grid_size):
+    if grid_size < 2:
+        return [low]
+
+    step = (high - low) / Decimal(grid_size - 1)
+    return [low + step * Decimal(index) for index in range(grid_size)]
+
+
+def code_value(factor, value):
+    midpoint = factor.mid
+    half_range = (factor.high - factor.low) / Decimal("2")
+    if half_range == 0:
+        return Decimal("0")
+    return (value - midpoint) / half_range

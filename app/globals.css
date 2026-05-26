@@ -37,6 +37,7 @@ body {
 
 button,
 input,
+select,
 table {
   font: inherit;
 }
@@ -78,11 +79,26 @@ input {
   padding: 8px 10px;
 }
 
+select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 8px 10px;
+}
+
 input::placeholder {
   color: #9aa7b3;
 }
 
 input:focus {
+  border-color: var(--accent);
+  outline: 2px solid rgba(15, 118, 110, 0.16);
+}
+
+select:focus {
   border-color: var(--accent);
   outline: 2px solid rgba(15, 118, 110, 0.16);
 }
@@ -538,6 +554,90 @@ tbody tr:last-child td {
   color: var(--text);
 }
 
+.contour-card {
+  grid-column: 1 / -1;
+}
+
+.surface-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.surface-controls label {
+  display: grid;
+  gap: 6px;
+}
+
+.surface-controls span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.surface-layout {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.surface-y-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+}
+
+.surface-plot {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 3px;
+  min-height: 330px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.surface-cell {
+  min-height: 22px;
+  border-radius: 4px;
+}
+
+.surface-x-label,
+.surface-note {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.surface-scale {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.surface-scale div {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(205, 70%, 88%), hsl(30, 70%, 50%));
+}
+
+.surface-note {
+  margin: 0;
+  font-weight: 600;
+}
+
 @media (max-width: 920px) {
   .hero-card,
   .card-heading {
@@ -552,7 +652,8 @@ tbody tr:last-child td {
   .driver-grid,
   .condition-grid,
   .graph-section,
-  .project-list {
+  .project-list,
+  .surface-controls {
     grid-template-columns: 1fr;
   }
 }

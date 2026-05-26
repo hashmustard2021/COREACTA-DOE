@@ -19,6 +19,7 @@ from .serializers import (
 )
 from .services import (
     build_report,
+    build_response_surface,
     create_fractional_factorial_design,
     upsert_result,
 )
@@ -113,6 +114,23 @@ def report(request, project_id):
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
 
     return api_success(build_report(project))
+
+
+@api_view(["GET"])
+def surface(request, project_id):
+    try:
+        project = get_project(project_id)
+        surface_data = build_response_surface(
+            project,
+            request.query_params.get("x_factor"),
+            request.query_params.get("y_factor"),
+        )
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+    except ValueError as exc:
+        return api_error(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    return api_success(surface_data)
 
 
 @api_view(["GET"])
