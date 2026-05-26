@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Project
+from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
     FactorSerializer,
@@ -136,6 +137,18 @@ def download_design_csv(request, project_id):
     )
     response["Content-Disposition"] = (
         f'attachment; filename="coreacta_project_{project.id}_design.csv"'
+    )
+    return response
+
+
+@api_view(["GET"])
+def download_report_pdf(request, project_id):
+    project = get_project(project_id)
+    pdf_bytes = build_project_report_pdf(project)
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="coreacta-doe-report-project-{project.id}.pdf"'
     )
     return response
 

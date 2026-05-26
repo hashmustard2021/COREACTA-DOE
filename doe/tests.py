@@ -148,6 +148,22 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(recommendations[1]["conditions"]["C"]["direction"], "LOW")
         self.assertEqual(recommendations[2]["conditions"]["A"]["direction"], "LOW")
 
+    def test_report_pdf_download(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        response = self.client.get(f"/api/projects/{project['id']}/report.pdf/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn(
+            f"coreacta-doe-report-project-{project['id']}.pdf",
+            response["Content-Disposition"],
+        )
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertGreater(len(response.content), 1000)
+
     def create_project(self):
         response = self.client.post("/api/projects/", self.project_payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

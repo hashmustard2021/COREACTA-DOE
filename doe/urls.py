@@ -13,6 +13,11 @@ urlpatterns = [
         name="download-design-csv",
     ),
     path(
+        "projects/<int:project_id>/report.pdf/",
+        views.download_report_pdf,
+        name="download-report-pdf",
+    ),
+    path(
         "projects/<int:project_id>/results/",
         views.create_or_update_result,
         name="create-or-update-result",

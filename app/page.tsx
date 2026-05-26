@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Download, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
+import { Download, FileText, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -383,6 +383,42 @@ export default function Home() {
     }
   }
 
+  async function handleDownloadPdf() {
+    if (!project) return;
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${project.id}/report.pdf/`,
+        {
+          mode: "cors",
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`PDF download failed. HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `coreacta-doe-report-project-${project.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setStatusText("PDF report downloaded.");
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "PDF download failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function loadProjects() {
     setIsLoadingProjects(true);
     try {
@@ -689,7 +725,18 @@ export default function Home() {
             <span>Report</span>
             <h2>Top drivers and recommended next runs</h2>
           </div>
-          <FlaskConical className="report-icon" size={24} />
+          <div className="report-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={!project || isBusy}
+            >
+              <FileText size={16} />
+              PDF 리포트 다운로드
+            </button>
+            <FlaskConical className="report-icon" size={24} />
+          </div>
         </div>
 
         {!report ? (
