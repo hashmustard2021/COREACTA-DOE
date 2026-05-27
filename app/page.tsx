@@ -88,6 +88,9 @@ type Recommendation = {
       display_name: string;
       direction: "HIGH" | "LOW" | "NEUTRAL";
       value: number | string;
+      unit?: string;
+      low?: number | string;
+      high?: number | string;
     }
   >;
 };
@@ -210,6 +213,24 @@ function heatColor(value: number, min: number, max: number) {
   const hue = 205 - ratio * 175;
   const lightness = 88 - ratio * 38;
   return `hsl(${hue}, 70%, ${lightness}%)`;
+}
+
+function formatConditionValue(condition: Recommendation["conditions"][string]) {
+  const numericValue = Number(condition.value);
+  const numericLow = Number(condition.low);
+  const numericHigh = Number(condition.high);
+  const value =
+    Number.isFinite(numericValue) &&
+    Number.isFinite(numericLow) &&
+    Number.isFinite(numericHigh)
+      ? Math.min(Math.max(numericValue, numericLow), numericHigh)
+      : condition.value;
+  const displayValue =
+    typeof value === "number" && Number.isFinite(value)
+      ? Number(value.toFixed(4)).toString()
+      : String(value);
+
+  return condition.unit ? `${displayValue} ${condition.unit}` : displayValue;
 }
 
 export default function Home() {
@@ -874,7 +895,8 @@ export default function Home() {
                       {Object.entries(recommendation.conditions).map(([key, condition]) => (
                         <span key={key}>
                           <b>{key}</b>
-                          {condition.direction} · {condition.value}
+                          <em>{condition.direction}</em>
+                          <strong>{formatConditionValue(condition)}</strong>
                         </span>
                       ))}
                     </div>

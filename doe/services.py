@@ -164,7 +164,7 @@ def recommend_rule_based_next_runs(factors, top_drivers):
                 "factor_idx": factor.idx,
                 "display_name": factor.display_name,
                 "direction": direction,
-                "value": pick_value(factor, direction),
+                **condition_factor_payload(factor, pick_value(factor, direction)),
             }
 
         recommendations.append(
@@ -199,7 +199,7 @@ def recommend_model_based_next_runs(project, factors):
                 "factor_idx": factor.idx,
                 "display_name": factor.display_name,
                 "direction": direction,
-                "value": value,
+                **condition_factor_payload(factor, value),
             }
             coded_values[factor.key] = float(code_value(factor, value))
             values.append(value)
@@ -346,7 +346,7 @@ def midpoint_recommendation(factors):
             "factor_idx": factor.idx,
             "display_name": factor.display_name,
             "direction": "NEUTRAL",
-            "value": factor.mid,
+            **condition_factor_payload(factor, factor.mid),
         }
 
     return {
@@ -375,6 +375,15 @@ def pick_value(factor, direction):
 
 def bounded_value(factor, value):
     return min(max(value, factor.low), factor.high)
+
+
+def condition_factor_payload(factor, value):
+    return {
+        "value": bounded_value(factor, value),
+        "unit": factor.unit,
+        "low": factor.low,
+        "high": factor.high,
+    }
 
 
 def clamp_yield(value):

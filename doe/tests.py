@@ -167,6 +167,9 @@ class SuzukiCouplingDoeApiTests(APITestCase):
             for condition in recommendation["conditions"].values():
                 factor = factors_by_key[condition["display_name"]]
                 value = Decimal(str(condition["value"]))
+                self.assertEqual(condition["unit"], factor["unit"])
+                self.assertEqual(Decimal(str(condition["low"])), Decimal(str(factor["low"])))
+                self.assertEqual(Decimal(str(condition["high"])), Decimal(str(factor["high"])))
                 self.assertGreaterEqual(value, Decimal(str(factor["low"])))
                 self.assertLessEqual(value, Decimal(str(factor["high"])))
 
