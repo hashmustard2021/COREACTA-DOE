@@ -68,7 +68,7 @@ def build_project_report_pdf(project):
     story.append(Spacer(1, 8))
 
     story.append(section_title("Top Drivers", styles))
-    top_driver_rows = [["Factor", "Effect", "Direction"]]
+    top_driver_rows = [["Factor", "Effect (HIGH mean - LOW mean)", "Preferred Level"]]
     for effect in report["top_drivers"]:
         top_driver_rows.append(
             [
@@ -83,7 +83,12 @@ def build_project_report_pdf(project):
     story.append(section_title("Notes", styles))
     story.append(
         Paragraph(
-            report["message"] or "Top drivers are sorted by absolute main effect.",
+            report["message"]
+            or (
+                "Effect is calculated as mean(Y | HIGH) - mean(Y | LOW). "
+                "A negative effect means the LOW level is expected to give a higher response. "
+                "Top drivers are sorted by absolute main effect."
+            ),
             styles["Body"],
         )
     )
@@ -91,16 +96,17 @@ def build_project_report_pdf(project):
 
     story.append(section_title("Recommended Next Runs", styles))
     if report["recommendations"]:
-        recommendation_rows = [["Rank", "Strategy", "Conditions"]]
+        recommendation_rows = [["Rank", "Strategy", "Predicted Yield", "Conditions"]]
         for recommendation in report["recommendations"]:
             conditions = ", ".join(
-                f"{key}: {condition['direction']} ({condition['value']})"
+                format_condition(key, condition)
                 for key, condition in recommendation["conditions"].items()
             )
             recommendation_rows.append(
                 [
                     recommendation["rank"],
                     recommendation["strategy"],
+                    format_predicted_yield(recommendation.get("predicted_yield")),
                     conditions,
                 ]
             )
@@ -193,3 +199,15 @@ def format_number(value):
     if value is None:
         return ""
     return f"{float(value):.4g}"
+
+
+def format_predicted_yield(value):
+    if value is None:
+        return ""
+    return f"{float(value):.1f}%"
+
+
+def format_condition(key, condition):
+    unit = condition.get("unit", "")
+    unit_suffix = f" {unit}" if unit else ""
+    return f"{key}: {condition['direction']} ({condition['value']}{unit_suffix})"
