@@ -151,6 +151,8 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         for recommendation in recommendations:
             self.assertIn("predicted_yield", recommendation)
             self.assertIsInstance(recommendation["predicted_yield"], float)
+            self.assertGreaterEqual(recommendation["predicted_yield"], 0)
+            self.assertLessEqual(recommendation["predicted_yield"], 100)
             self.assertIn(
                 "예측 모델 기준 수율이 높게 예상됨",
                 recommendation["strategy"],
@@ -160,6 +162,28 @@ class SuzukiCouplingDoeApiTests(APITestCase):
                 for key in ("A", "B", "C", "D")
             )
             self.assertNotIn(recommended_condition, completed_conditions)
+
+            factors_by_key = {factor["display_name"]: factor for factor in project["factors"]}
+            for condition in recommendation["conditions"].values():
+                factor = factors_by_key[condition["display_name"]]
+                value = Decimal(str(condition["value"]))
+                self.assertGreaterEqual(value, Decimal(str(factor["low"])))
+                self.assertLessEqual(value, Decimal(str(factor["high"])))
+
+    def test_result_input_rejects_invalid_yield_percent(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+
+        for invalid_value in ("-1", "101"):
+            response = self.client.post(
+                f"/api/projects/{project['id']}/results/",
+                {"run_order": 1, "response": invalid_value},
+                format="json",
+            )
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertFalse(response.data["success"])
+            self.assertIn("between 0 and 100", response.data["message"])
 
     def test_report_pdf_download(self):
         project = self.create_project()
@@ -200,6 +224,10 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(len(surface["z_matrix"]), 11)
         self.assertEqual(len(surface["z_matrix"][0]), 11)
         self.assertIsInstance(surface["z_matrix"][0][0], float)
+        for row in surface["z_matrix"]:
+            for predicted_yield in row:
+                self.assertGreaterEqual(predicted_yield, 0)
+                self.assertLessEqual(predicted_yield, 100)
 
     def create_project(self):
         response = self.client.post("/api/projects/", self.project_payload, format="json")

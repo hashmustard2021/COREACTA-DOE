@@ -221,7 +221,7 @@ def recommend_model_based_next_runs(project, factors):
                 "rank": rank,
                 "strategy": "예측 모델 기준 수율이 높게 예상됨",
                 "conditions": conditions,
-                "predicted_yield": round(predicted, 2),
+                "predicted_yield": round(clamp_yield(predicted), 2),
             }
         )
 
@@ -367,10 +367,18 @@ def opposite_direction(direction):
 
 def pick_value(factor, direction):
     if direction == "HIGH":
-        return factor.high
+        return bounded_value(factor, factor.high)
     if direction == "LOW":
-        return factor.low
-    return factor.mid
+        return bounded_value(factor, factor.low)
+    return bounded_value(factor, factor.mid)
+
+
+def bounded_value(factor, value):
+    return min(max(value, factor.low), factor.high)
+
+
+def clamp_yield(value):
+    return min(max(float(value), 0.0), 100.0)
 
 
 def recommendation_strategy(rank, top1, top2):
@@ -434,7 +442,7 @@ def build_response_surface(project, x_factor_name, y_factor_name, grid_size=11):
                 + y_coef * y_coded
                 + xy_coef * x_coded * y_coded
             )
-            row.append(round(float(predicted), 4))
+            row.append(round(clamp_yield(predicted), 4))
         z_matrix.append(row)
 
     return {

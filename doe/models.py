@@ -29,7 +29,11 @@ class Factor(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["project", "idx"], name="unique_factor_idx_per_project"
-            )
+            ),
+            models.CheckConstraint(
+                check=models.Q(low__lt=models.F("high")),
+                name="factor_low_smaller_than_high",
+            ),
         ]
         ordering = ["idx"]
 
@@ -79,6 +83,14 @@ class Result(models.Model):
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(response__gte=0) & models.Q(response__lte=100),
+                name="result_response_between_0_and_100",
+            )
+        ]
 
     def __str__(self):
         return f"{self.design_run}: {self.response}"

@@ -103,6 +103,11 @@ class ResultUpsertSerializer(serializers.Serializer):
     response = serializers.DecimalField(max_digits=12, decimal_places=4)
     note = serializers.CharField(required=False, allow_blank=True)
 
+    def validate_response(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("Yield response must be between 0 and 100.")
+        return value
+
 
 class ResultSerializer(serializers.ModelSerializer):
     run_order = serializers.IntegerField(source="design_run.run_order", read_only=True)
