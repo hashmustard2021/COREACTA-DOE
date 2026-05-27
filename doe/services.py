@@ -1,4 +1,5 @@
 from decimal import Decimal
+from itertools import combinations, product
 
 from .models import DesignRun, Factor, Result
 
@@ -66,12 +67,10 @@ def build_report(project):
         valid_effects, key=lambda item: abs(item["effect"]), reverse=True
     )
 
-    recommendations = []
+    recommendations = recommend_next_runs(factors, top_drivers, project)
     message = ""
     if len(valid_effects) < 2:
         message = "유효한 effect가 2개 미만입니다. 결과 데이터를 더 입력해주세요."
-    else:
-        recommendations = recommend_next_runs(factors, top_drivers)
 
     return {
         "project": {"id": project.id, "name": project.name},
@@ -122,7 +121,22 @@ def calculate_main_effects(project, factors):
     return effects
 
 
-def recommend_next_runs(factors, top_drivers):
+def recommend_next_runs(factors, top_drivers, project=None):
+    if project is not None:
+        try:
+            model_recommendations = recommend_model_based_next_runs(project, factors)
+            if model_recommendations:
+                return model_recommendations
+        except (ArithmeticError, KeyError, TypeError, ValueError):
+            pass
+
+    rule_based_recommendations = recommend_rule_based_next_runs(factors, top_drivers)
+    if rule_based_recommendations:
+        return rule_based_recommendations
+    return [midpoint_recommendation(factors)]
+
+
+def recommend_rule_based_next_runs(factors, top_drivers):
     valid_effects = [effect for effect in top_drivers if effect["effect"] is not None]
     if len(valid_effects) < 2:
         return []
@@ -162,6 +176,185 @@ def recommend_next_runs(factors, top_drivers):
         )
 
     return recommendations
+
+
+def recommend_model_based_next_runs(project, factors):
+    observations = list(model_observations(project, factors))
+    if len(observations) < 4:
+        return []
+
+    feature_names = model_feature_names(factors)
+    coefficients = fit_ridge_model(observations, feature_names)
+    completed_conditions = completed_condition_keys(project, factors)
+
+    candidates = []
+    for levels in product(("LOW", "NEUTRAL", "HIGH"), repeat=len(factors)):
+        conditions = {}
+        coded_values = {}
+        values = []
+
+        for factor, direction in zip(factors, levels):
+            value = pick_value(factor, direction)
+            conditions[factor.key] = {
+                "factor_idx": factor.idx,
+                "display_name": factor.display_name,
+                "direction": direction,
+                "value": value,
+            }
+            coded_values[factor.key] = float(code_value(factor, value))
+            values.append(value)
+
+        if condition_key(values) in completed_conditions:
+            continue
+
+        predicted = predict_response(coefficients, feature_names, coded_values)
+        candidates.append((predicted, conditions))
+
+    if not candidates:
+        return [midpoint_recommendation(factors)]
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    recommendations = []
+    for rank, (predicted, conditions) in enumerate(candidates[:3], start=1):
+        recommendations.append(
+            {
+                "rank": rank,
+                "strategy": "예측 모델 기준 수율이 높게 예상됨",
+                "conditions": conditions,
+                "predicted_yield": round(predicted, 2),
+            }
+        )
+
+    return recommendations
+
+
+def model_observations(project, factors):
+    for run in project.design_runs.select_related("result").order_by("run_order"):
+        if not hasattr(run, "result"):
+            continue
+
+        coded_values = {}
+        for factor in factors:
+            raw_value = run.values.get(factor.key)
+            if raw_value is None:
+                raw_value = pick_value(
+                    factor,
+                    "HIGH" if run.levels.get(factor.key) == 1 else "LOW",
+                )
+            coded_values[factor.key] = float(code_value(factor, Decimal(str(raw_value))))
+
+        yield {
+            "coded_values": coded_values,
+            "response": float(run.result.response),
+        }
+
+
+def model_feature_names(factors):
+    factor_keys = [factor.key for factor in factors]
+    interaction_keys = [
+        f"{left}:{right}" for left, right in combinations(factor_keys, 2)
+    ]
+    return ["intercept", *factor_keys, *interaction_keys]
+
+
+def feature_vector(feature_names, coded_values):
+    vector = []
+    for feature_name in feature_names:
+        if feature_name == "intercept":
+            vector.append(1.0)
+        elif ":" in feature_name:
+            left, right = feature_name.split(":", 1)
+            vector.append(coded_values[left] * coded_values[right])
+        else:
+            vector.append(coded_values[feature_name])
+    return vector
+
+
+def fit_ridge_model(observations, feature_names, regularization=0.01):
+    rows = [
+        feature_vector(feature_names, observation["coded_values"])
+        for observation in observations
+    ]
+    responses = [observation["response"] for observation in observations]
+    size = len(feature_names)
+    matrix = [[0.0 for _ in range(size)] for _ in range(size)]
+    rhs = [0.0 for _ in range(size)]
+
+    for row, response in zip(rows, responses):
+        for i in range(size):
+            rhs[i] += row[i] * response
+            for j in range(size):
+                matrix[i][j] += row[i] * row[j]
+
+    for i in range(1, size):
+        matrix[i][i] += regularization
+
+    return solve_linear_system(matrix, rhs)
+
+
+def solve_linear_system(matrix, rhs):
+    size = len(rhs)
+    augmented = [row[:] + [rhs[index]] for index, row in enumerate(matrix)]
+
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda row: abs(augmented[row][column]))
+        if abs(augmented[pivot][column]) < 1e-12:
+            raise ValueError("Prediction model could not be fitted.")
+        augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
+
+        pivot_value = augmented[column][column]
+        for item in range(column, size + 1):
+            augmented[column][item] /= pivot_value
+
+        for row in range(size):
+            if row == column:
+                continue
+            factor = augmented[row][column]
+            for item in range(column, size + 1):
+                augmented[row][item] -= factor * augmented[column][item]
+
+    return [augmented[row][size] for row in range(size)]
+
+
+def predict_response(coefficients, feature_names, coded_values):
+    vector = feature_vector(feature_names, coded_values)
+    return sum(coefficient * value for coefficient, value in zip(coefficients, vector))
+
+
+def completed_condition_keys(project, factors):
+    keys = set()
+    for run in project.design_runs.order_by("run_order"):
+        values = []
+        for factor in factors:
+            value = run.values.get(factor.key)
+            if value is None:
+                continue
+            values.append(Decimal(str(value)))
+        if len(values) == len(factors):
+            keys.add(condition_key(values))
+    return keys
+
+
+def condition_key(values):
+    return tuple(Decimal(str(value)).normalize() for value in values)
+
+
+def midpoint_recommendation(factors):
+    conditions = {}
+    for factor in factors:
+        conditions[factor.key] = {
+            "factor_idx": factor.idx,
+            "display_name": factor.display_name,
+            "direction": "NEUTRAL",
+            "value": factor.mid,
+        }
+
+    return {
+        "rank": 1,
+        "strategy": "추천 가능한 후보가 없어 중간 조건을 제안",
+        "conditions": conditions,
+        "predicted_yield": None,
+    }
 
 
 def opposite_direction(direction):

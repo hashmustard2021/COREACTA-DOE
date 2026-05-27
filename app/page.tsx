@@ -80,6 +80,7 @@ type Effect = {
 type Recommendation = {
   rank: number;
   strategy: string;
+  predicted_yield?: number | null;
   conditions: Record<
     string,
     {
@@ -863,6 +864,12 @@ export default function Home() {
                       <span>#{recommendation.rank}</span>
                       <strong>{recommendation.strategy}</strong>
                     </div>
+                    {recommendation.predicted_yield !== undefined &&
+                      recommendation.predicted_yield !== null && (
+                        <p className="prediction">
+                          Predicted yield: {Number(recommendation.predicted_yield).toFixed(1)}%
+                        </p>
+                      )}
                     <div className="condition-grid">
                       {Object.entries(recommendation.conditions).map(([key, condition]) => (
                         <span key={key}>

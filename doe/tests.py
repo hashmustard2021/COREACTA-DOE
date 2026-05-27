@@ -119,7 +119,7 @@ class SuzukiCouplingDoeApiTests(APITestCase):
 
     def test_report_api_main_effects_and_next_runs(self):
         project = self.create_project()
-        self.create_design(project["id"])
+        design = self.create_design(project["id"])
         self.submit_results(project["id"])
 
         response = self.client.get(f"/api/projects/{project['id']}/report/")
@@ -143,10 +143,23 @@ class SuzukiCouplingDoeApiTests(APITestCase):
 
         recommendations = report["recommendations"]
         self.assertEqual(len(recommendations), 3)
-        self.assertEqual(recommendations[0]["conditions"]["C"]["direction"], "HIGH")
-        self.assertEqual(recommendations[0]["conditions"]["A"]["direction"], "HIGH")
-        self.assertEqual(recommendations[1]["conditions"]["C"]["direction"], "LOW")
-        self.assertEqual(recommendations[2]["conditions"]["A"]["direction"], "LOW")
+        completed_conditions = {
+            tuple(Decimal(str(run["values"][key])).normalize() for key in ("A", "B", "C", "D"))
+            for run in design
+        }
+
+        for recommendation in recommendations:
+            self.assertIn("predicted_yield", recommendation)
+            self.assertIsInstance(recommendation["predicted_yield"], float)
+            self.assertIn(
+                "예측 모델 기준 수율이 높게 예상됨",
+                recommendation["strategy"],
+            )
+            recommended_condition = tuple(
+                Decimal(str(recommendation["conditions"][key]["value"])).normalize()
+                for key in ("A", "B", "C", "D")
+            )
+            self.assertNotIn(recommended_condition, completed_conditions)
 
     def test_report_pdf_download(self):
         project = self.create_project()

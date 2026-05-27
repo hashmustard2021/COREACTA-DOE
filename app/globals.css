@@ -493,6 +493,13 @@ tbody tr:last-child td {
   line-height: 1.35;
 }
 
+.prediction {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .condition-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
