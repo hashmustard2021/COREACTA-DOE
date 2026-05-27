@@ -224,6 +224,9 @@ export default function Home() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
+  const [surfaceMessage, setSurfaceMessage] = useState(
+    "Update Surface를 눌러 contour plot을 생성하세요.",
+  );
   const [surfaceXFactor, setSurfaceXFactor] = useState(factorDisplayName(defaultFactors[0]));
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -298,6 +301,7 @@ export default function Home() {
     setStatusText("");
     setReport(null);
     setSurfaceData(null);
+    setSurfaceMessage("결과를 입력한 뒤 Update Surface를 눌러 contour plot을 생성하세요.");
 
     try {
       const createdProject = await apiRequest<Project>("/api/projects/", {
@@ -352,6 +356,7 @@ export default function Home() {
       const nextReport = await apiRequest<Report>(`/api/projects/${project.id}/report/`);
       setReport(nextReport);
       setSurfaceData(null);
+      setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
       setStatusText(`${filledRuns.length} result(s) submitted.`);
       void loadProjects();
     } catch (error) {
@@ -501,6 +506,11 @@ export default function Home() {
       setYields(restoredYields);
       setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
       setSurfaceData(null);
+      setSurfaceMessage(
+        Object.keys(restoredYields).length > 0
+          ? "Update Surface를 눌러 contour plot을 생성하세요."
+          : "결과를 입력한 뒤 Update Surface를 눌러 contour plot을 생성하세요.",
+      );
       setStatusText(`Project ${projectId} loaded.`);
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to load project.");
@@ -510,10 +520,22 @@ export default function Home() {
   }
 
   async function handleLoadSurface() {
-    if (!project) return;
+    if (!project) {
+      setSurfaceData(null);
+      setSurfaceMessage("먼저 프로젝트를 생성하거나 목록에서 불러오세요.");
+      return;
+    }
+
+    if (surfaceXFactor === surfaceYFactor) {
+      setSurfaceData(null);
+      setSurfaceMessage("서로 다른 X/Y factor를 선택해주세요.");
+      return;
+    }
+
     setIsBusy(true);
     setErrorText("");
     setStatusText("");
+    setSurfaceMessage("Contour plot을 계산하는 중입니다.");
 
     try {
       const params = new URLSearchParams({
@@ -523,10 +545,13 @@ export default function Home() {
       setSurfaceData(
         await apiRequest<SurfaceData>(`/api/projects/${project.id}/surface/?${params}`),
       );
+      setSurfaceMessage("");
       setStatusText("Contour plot updated.");
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load surface data.";
       setSurfaceData(null);
-      setErrorText(error instanceof Error ? error.message : "Failed to load surface data.");
+      setSurfaceMessage(message);
+      setErrorText(message);
     } finally {
       setIsBusy(false);
     }
@@ -968,7 +993,7 @@ export default function Home() {
             <button
               type="button"
               onClick={handleLoadSurface}
-              disabled={!project || isBusy}
+              disabled={!project || isBusy || surfaceXFactor === surfaceYFactor}
             >
               <RefreshCw size={16} />
               Update Surface
@@ -980,7 +1005,11 @@ export default function Home() {
               <span>X factor</span>
               <select
                 value={surfaceXFactor}
-                onChange={(event) => setSurfaceXFactor(event.target.value)}
+                onChange={(event) => {
+                  setSurfaceXFactor(event.target.value);
+                  setSurfaceData(null);
+                  setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+                }}
               >
                 {factors.map((factor) => (
                   <option key={factor.idx} value={factorDisplayName(factor)}>
@@ -993,7 +1022,11 @@ export default function Home() {
               <span>Y factor</span>
               <select
                 value={surfaceYFactor}
-                onChange={(event) => setSurfaceYFactor(event.target.value)}
+                onChange={(event) => {
+                  setSurfaceYFactor(event.target.value);
+                  setSurfaceData(null);
+                  setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+                }}
               >
                 {factors.map((factor) => (
                   <option key={factor.idx} value={factorDisplayName(factor)}>
@@ -1005,7 +1038,7 @@ export default function Home() {
           </div>
 
           {!surfaceData ? (
-            <p className="empty-state">시각화할 데이터가 충분하지 않습니다.</p>
+            <p className="empty-state">{surfaceMessage}</p>
           ) : (
             <div className="surface-layout">
               <div className="surface-y-label">{surfaceData.y_factor}</div>
