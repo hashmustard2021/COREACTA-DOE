@@ -68,11 +68,14 @@ def build_project_report_pdf(project):
     story.append(Spacer(1, 8))
 
     story.append(section_title("Top Drivers", styles))
-    top_driver_rows = [["Factor", "Effect (HIGH mean - LOW mean)", "Preferred Level"]]
+    top_driver_rows = [
+        ["Factor", "Impact", "Signed Effect", "Preferred Level"]
+    ]
     for effect in report["top_drivers"]:
         top_driver_rows.append(
             [
                 effect["display_name"],
+                format_number(effect.get("effect_abs")),
                 format_number(effect["effect"]),
                 effect["direction"],
             ]
@@ -85,9 +88,9 @@ def build_project_report_pdf(project):
         Paragraph(
             report["message"]
             or (
-                "Effect is calculated as mean(Y | HIGH) - mean(Y | LOW). "
-                "A negative effect means the LOW level is expected to give a higher response. "
-                "Top drivers are sorted by absolute main effect."
+                "Impact is the absolute size of the main effect. Signed Effect is "
+                "mean(Y | HIGH) - mean(Y | LOW). A negative signed effect means "
+                "the LOW level is expected to give a higher response."
             ),
             styles["Body"],
         )

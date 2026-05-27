@@ -114,11 +114,21 @@ def calculate_main_effects(project, factors):
                 "factor_key": factor.key,
                 "display_name": factor.display_name,
                 "effect": effect,
+                "effect_abs": abs(effect) if effect is not None else None,
                 "direction": direction,
+                "interpretation": effect_interpretation(direction),
             }
         )
 
     return effects
+
+
+def effect_interpretation(direction):
+    if direction == "HIGH":
+        return "HIGH level is expected to increase the response."
+    if direction == "LOW":
+        return "LOW level is expected to increase the response."
+    return "No clear preferred level."
 
 
 def recommend_next_runs(factors, top_drivers, project=None):

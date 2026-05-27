@@ -74,7 +74,9 @@ type Effect = {
   factor_key: string;
   display_name: string;
   effect: number | null;
+  effect_abs?: number | null;
   direction: "HIGH" | "LOW" | "NEUTRAL";
+  interpretation?: string;
 };
 
 type Recommendation = {
@@ -195,6 +197,12 @@ function formatFactorValue(run: DesignRun, factorKey: string) {
 function formatEffect(effect: number | null) {
   if (effect === null) return "-";
   return Number(effect).toFixed(2);
+}
+
+function formatImpact(effect: Effect) {
+  const value = effect.effect_abs ?? (effect.effect === null ? null : Math.abs(Number(effect.effect)));
+  if (value === null) return "-";
+  return Number(value).toFixed(2);
 }
 
 function effectDirectionLabel(effect: number) {
@@ -859,8 +867,9 @@ export default function Home() {
                     <span>#{index + 1}</span>
                     <strong>{effect.display_name}</strong>
                     <div>
-                      <b>{formatEffect(effect.effect)}</b>
-                      <em>{effect.direction}</em>
+                      <b>Impact {formatImpact(effect)}</b>
+                      <em>{effect.direction} 유리</em>
+                      <small>Signed effect: {formatEffect(effect.effect)}</small>
                     </div>
                   </article>
                 ))}
@@ -870,7 +879,8 @@ export default function Home() {
             <div>
               <h3>Notes</h3>
               <div className="notes-box">
-                {report.message || `Calculated ${report.top_drivers.length} valid effect(s).`}
+                {report.message ||
+                  "Impact는 effect의 절댓값입니다. Signed effect는 HIGH 평균 수율 - LOW 평균 수율이며, 음수이면 LOW 조건이 유리하다는 뜻입니다."}
               </div>
             </div>
 

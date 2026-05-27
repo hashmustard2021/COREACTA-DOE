@@ -133,10 +133,18 @@ class SuzukiCouplingDoeApiTests(APITestCase):
             item["factor_key"]: Decimal(str(item["effect"]))
             for item in report["effects"]
         }
+        effect_impacts = {
+            item["factor_key"]: Decimal(str(item["effect_abs"]))
+            for item in report["effects"]
+        }
         self.assertEqual(effects["A"], Decimal("5.5"))
         self.assertEqual(effects["B"], Decimal("3.0"))
         self.assertEqual(effects["C"], Decimal("9.0"))
         self.assertEqual(effects["D"], Decimal("1.5"))
+        self.assertEqual(effect_impacts["A"], Decimal("5.5"))
+        self.assertEqual(effect_impacts["B"], Decimal("3.0"))
+        self.assertEqual(effect_impacts["C"], Decimal("9.0"))
+        self.assertEqual(effect_impacts["D"], Decimal("1.5"))
 
         top_drivers = report["top_drivers"]
         self.assertEqual([item["factor_key"] for item in top_drivers], ["C", "A", "B", "D"])
