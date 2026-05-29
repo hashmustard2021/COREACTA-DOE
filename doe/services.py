@@ -71,6 +71,12 @@ def build_report(project):
     message = ""
     if len(valid_effects) < 2:
         message = "유효한 effect가 2개 미만입니다. 결과 데이터를 더 입력해주세요."
+    interpretation = build_interpretation(
+        effects=effects,
+        top_drivers=top_drivers,
+        recommendations=recommendations,
+        has_enough_data=len(valid_effects) >= 2,
+    )
 
     return {
         "project": {"id": project.id, "name": project.name},
@@ -78,6 +84,7 @@ def build_report(project):
         "top_drivers": top_drivers,
         "message": message,
         "recommendations": recommendations,
+        "interpretation": interpretation,
     }
 
 
@@ -129,6 +136,76 @@ def effect_interpretation(direction):
     if direction == "LOW":
         return "LOW level is expected to increase the response."
     return "No clear preferred level."
+
+
+def build_interpretation(effects, top_drivers, recommendations, has_enough_data):
+    if not has_enough_data:
+        return [
+            "현재 데이터는 main effect를 안정적으로 해석하기에 아직 부족합니다.",
+            "후속 실험에서는 각 factor의 LOW/HIGH 결과가 모두 확보되도록 결과 입력을 먼저 완료하는 것이 좋습니다.",
+            "추가 검증이 필요합니다.",
+        ]
+
+    notes = []
+    if top_drivers:
+        top1 = top_drivers[0]
+        notes.append(
+            f"현재 데이터에서는 {top1['display_name']}가 가장 큰 영향을 보이며, "
+            f"{direction_label_kr(top1['direction'])} 조건에서 수율이 유리하게 관찰됩니다."
+        )
+
+    if len(top_drivers) >= 2:
+        top2 = top_drivers[1]
+        notes.append(
+            f"두 번째로 큰 영향은 {top2['display_name']}이며, "
+            f"{direction_label_kr(top2['direction'])} 조건을 중심으로 추가 확인이 필요합니다."
+        )
+
+    small_effects = [
+        effect for effect in effects if effect["effect_abs"] is not None
+    ]
+    if small_effects:
+        smallest = min(small_effects, key=lambda item: item["effect_abs"])
+        notes.append(
+            f"{smallest['display_name']}의 영향은 상대적으로 작게 나타났으므로, "
+            "우선순위는 높은 driver 검증에 두는 것이 합리적입니다."
+        )
+
+    if recommendations:
+        first_recommendation = recommendations[0]
+        conditions = summarize_conditions(first_recommendation["conditions"])
+        predicted_yield = first_recommendation.get("predicted_yield")
+        yield_text = (
+            f" 예측 수율은 약 {predicted_yield:.1f}%입니다."
+            if predicted_yield is not None
+            else ""
+        )
+        notes.append(
+            f"후속 실험에서는 {conditions} 조건을 우선 검토할 수 있습니다.{yield_text}"
+        )
+
+    notes.append("이 해석은 현재 입력된 DOE 결과를 기반으로 한 rule-based 요약이며, 추가 검증이 필요합니다.")
+    return notes
+
+
+def direction_label_kr(direction):
+    if direction == "HIGH":
+        return "HIGH"
+    if direction == "LOW":
+        return "LOW"
+    return "중간 또는 추가 확인"
+
+
+def summarize_conditions(conditions):
+    parts = []
+    for condition in conditions.values():
+        value = condition["value"]
+        unit = condition.get("unit", "")
+        unit_suffix = f" {unit}" if unit else ""
+        parts.append(
+            f"{condition['display_name']} {condition['direction']}({value}{unit_suffix})"
+        )
+    return ", ".join(parts)
 
 
 def recommend_next_runs(factors, top_drivers, project=None):

@@ -103,6 +103,7 @@ type Report = {
   top_drivers: Effect[];
   message: string;
   recommendations: Recommendation[];
+  interpretation: string[];
 };
 
 type SurfaceData = {
@@ -882,6 +883,19 @@ export default function Home() {
                 {report.message ||
                   "Impact는 effect의 절댓값입니다. Signed effect는 HIGH 평균 수율 - LOW 평균 수율이며, 음수이면 LOW 조건이 유리하다는 뜻입니다."}
               </div>
+            </div>
+
+            <div className="advisor-card">
+              <h3>AI Experiment Advisor</h3>
+              {report.interpretation.length === 0 ? (
+                <p className="empty-state">해석을 생성할 데이터가 충분하지 않습니다.</p>
+              ) : (
+                <ul>
+                  {report.interpretation.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="recommendations">

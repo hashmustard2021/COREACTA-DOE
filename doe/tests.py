@@ -149,6 +149,12 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         top_drivers = report["top_drivers"]
         self.assertEqual([item["factor_key"] for item in top_drivers], ["C", "A", "B", "D"])
 
+        interpretation = report["interpretation"]
+        self.assertGreaterEqual(len(interpretation), 5)
+        self.assertTrue(any("현재 데이터에서는" in item for item in interpretation))
+        self.assertTrue(any("후속 실험에서는" in item for item in interpretation))
+        self.assertTrue(any("추가 검증이 필요합니다" in item for item in interpretation))
+
         recommendations = report["recommendations"]
         self.assertEqual(len(recommendations), 3)
         completed_conditions = {
@@ -195,6 +201,23 @@ class SuzukiCouplingDoeApiTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertFalse(response.data["success"])
             self.assertIn("between 0 and 100", response.data["message"])
+
+    def test_report_interpretation_warns_when_data_is_insufficient(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+
+        response = self.client.get(f"/api/projects/{project['id']}/report/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        report = response.data["data"]
+        self.assertIn("interpretation", report)
+        self.assertTrue(
+            any("아직 부족합니다" in item for item in report["interpretation"])
+        )
+        self.assertTrue(
+            any("추가 검증이 필요합니다" in item for item in report["interpretation"])
+        )
 
     def test_report_pdf_download(self):
         project = self.create_project()

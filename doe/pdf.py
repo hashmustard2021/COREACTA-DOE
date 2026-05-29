@@ -97,6 +97,11 @@ def build_project_report_pdf(project):
     )
     story.append(Spacer(1, 8))
 
+    story.append(section_title("AI Experiment Advisor", styles))
+    for item in report.get("interpretation", []):
+        story.append(Paragraph(f"• {item}", styles["Body"]))
+    story.append(Spacer(1, 8))
+
     story.append(section_title("Recommended Next Runs", styles))
     if report["recommendations"]:
         recommendation_rows = [["Rank", "Strategy", "Predicted Yield", "Conditions"]]
