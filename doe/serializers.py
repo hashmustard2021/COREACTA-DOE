@@ -69,7 +69,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         ]
 
     def get_run_budget(self, obj):
-        return 8
+        return obj.design_runs.count() or 8
 
     def get_response_name(self, obj):
         return "Yield"
@@ -99,7 +99,7 @@ class DesignRunSerializer(serializers.ModelSerializer):
 
 
 class ResultUpsertSerializer(serializers.Serializer):
-    run_order = serializers.IntegerField(min_value=1, max_value=8)
+    run_order = serializers.IntegerField(min_value=1, max_value=11)
     response = serializers.DecimalField(max_digits=12, decimal_places=4)
     note = serializers.CharField(required=False, allow_blank=True)
 

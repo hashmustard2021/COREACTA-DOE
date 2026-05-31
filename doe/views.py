@@ -70,7 +70,11 @@ def project_detail(request, project_id):
 def create_design(request, project_id):
     try:
         project = get_project(project_id)
-        runs = create_fractional_factorial_design(project)
+        include_center_points = bool(request.data.get("include_center_points", False))
+        runs = create_fractional_factorial_design(
+            project,
+            include_center_points=include_center_points,
+        )
     except Http404 as exc:
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
     except ValueError as exc:

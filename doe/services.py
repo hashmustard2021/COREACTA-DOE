@@ -1,3 +1,4 @@
+import math
 from decimal import Decimal
 from itertools import combinations, product
 
@@ -16,7 +17,11 @@ BASE_LEVELS = [
 ]
 
 
-def create_fractional_factorial_design(project):
+def create_fractional_factorial_design(
+    project,
+    include_center_points=False,
+    center_point_replicates=3,
+):
     factors = list(project.factors.order_by("idx"))
     if not factors:
         raise ValueError("At least one factor is required.")
@@ -24,7 +29,8 @@ def create_fractional_factorial_design(project):
     project.design_runs.all().delete()
     runs = []
 
-    for run_order, (a, b, c) in enumerate(BASE_LEVELS, start=1):
+    run_order = 1
+    for a, b, c in BASE_LEVELS:
         base = {"A": a, "B": b, "C": c, "D": a * b * c}
         levels = {}
         values = {}
@@ -42,6 +48,21 @@ def create_fractional_factorial_design(project):
                 values=values,
             )
         )
+        run_order += 1
+
+    if include_center_points:
+        for _ in range(center_point_replicates):
+            levels = {factor.key: 0 for factor in factors}
+            values = {factor.key: str(factor.mid) for factor in factors}
+            runs.append(
+                DesignRun.objects.create(
+                    project=project,
+                    run_order=run_order,
+                    levels=levels,
+                    values=values,
+                )
+            )
+            run_order += 1
 
     return runs
 
@@ -68,6 +89,9 @@ def build_report(project):
     )
 
     recommendations = recommend_next_runs(factors, top_drivers, project)
+    pareto = build_pareto(effects)
+    curvature = calculate_curvature(project)
+    anova = calculate_anova(project, factors, effects)
     message = ""
     if len(valid_effects) < 2:
         message = "유효한 effect가 2개 미만입니다. 결과 데이터를 더 입력해주세요."
@@ -85,7 +109,182 @@ def build_report(project):
         "message": message,
         "recommendations": recommendations,
         "interpretation": interpretation,
+        "pareto": pareto,
+        "curvature": curvature,
+        "anova": anova,
     }
+
+
+def build_pareto(effects):
+    return [
+        {
+            "factor_key": effect["factor_key"],
+            "factor": effect["display_name"],
+            "effect": effect["effect"],
+            "effect_abs": effect["effect_abs"],
+            "direction": effect["direction"],
+        }
+        for effect in sorted(
+            [effect for effect in effects if effect["effect_abs"] is not None],
+            key=lambda item: item["effect_abs"],
+            reverse=True,
+        )
+    ]
+
+
+def calculate_curvature(project):
+    factorial_values = []
+    center_values = []
+
+    for run in project.design_runs.select_related("result").order_by("run_order"):
+        if not hasattr(run, "result"):
+            continue
+
+        if is_center_run(run):
+            center_values.append(run.result.response)
+        else:
+            factorial_values.append(run.result.response)
+
+    if not factorial_values or not center_values:
+        return {
+            "available": False,
+            "has_curvature": False,
+            "factorial_mean": None,
+            "center_mean": None,
+            "effect": None,
+            "message": "Center point 결과가 없어 curvature를 평가할 수 없습니다.",
+        }
+
+    factorial_mean = mean(factorial_values)
+    center_mean = mean(center_values)
+    effect = center_mean - factorial_mean
+    threshold = max(abs(float(factorial_mean)) * 0.05, 1.0)
+    has_curvature = abs(float(effect)) >= threshold
+
+    return {
+        "available": True,
+        "has_curvature": has_curvature,
+        "factorial_mean": round(float(factorial_mean), 4),
+        "center_mean": round(float(center_mean), 4),
+        "effect": round(float(effect), 4),
+        "message": (
+            "Center point 평균이 factorial 평균과 차이를 보여 curvature 가능성이 있습니다."
+            if has_curvature
+            else "현재 center point 기준으로 뚜렷한 curvature는 보이지 않습니다."
+        ),
+    }
+
+
+def calculate_anova(project, factors, effects):
+    result_runs = [
+        run
+        for run in project.design_runs.select_related("result").order_by("run_order")
+        if hasattr(run, "result")
+    ]
+    factorial_count = len([run for run in result_runs if not is_center_run(run)])
+    center_values = [
+        run.result.response for run in result_runs if is_center_run(run)
+    ]
+    error_df = max(len(center_values) - 1, 0)
+    error_ss = (
+        sum((value - mean(center_values)) ** 2 for value in center_values)
+        if error_df > 0
+        else None
+    )
+    error_ms = error_ss / Decimal(error_df) if error_ss is not None and error_df else None
+
+    rows = []
+    effects_by_key = {effect["factor_key"]: effect for effect in effects}
+    for factor in factors:
+        effect = effects_by_key.get(factor.key, {})
+        effect_value = effect.get("effect")
+        ss_factor = (
+            Decimal(factorial_count) * effect_value * effect_value / Decimal("4")
+            if effect_value is not None and factorial_count
+            else None
+        )
+        f_value = (
+            float(ss_factor / error_ms)
+            if ss_factor is not None and error_ms not in (None, Decimal("0"))
+            else None
+        )
+        p_value = f_survival(f_value, 1, error_df) if f_value is not None and error_df else None
+        rows.append(
+            {
+                "factor_key": factor.key,
+                "factor": factor.display_name,
+                "effect": effect_value,
+                "p_value": round(p_value, 4) if p_value is not None else None,
+                "significant": bool(p_value is not None and p_value < 0.05),
+            }
+        )
+
+    return rows
+
+
+def is_center_run(run):
+    return bool(run.levels) and all(level == 0 for level in run.levels.values())
+
+
+def f_survival(f_value, numerator_df, denominator_df):
+    if f_value is None or f_value < 0 or denominator_df <= 0:
+        return None
+    x = denominator_df / (denominator_df + numerator_df * f_value)
+    return regularized_beta(x, denominator_df / 2, numerator_df / 2)
+
+
+def regularized_beta(x, a, b):
+    if x <= 0:
+        return 0.0
+    if x >= 1:
+        return 1.0
+
+    log_beta = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+    front = math.exp(a * math.log(x) + b * math.log1p(-x) - log_beta)
+
+    if x < (a + 1) / (a + b + 2):
+        return front * beta_continued_fraction(a, b, x) / a
+    return 1 - front * beta_continued_fraction(b, a, 1 - x) / b
+
+
+def beta_continued_fraction(a, b, x, max_iterations=100, epsilon=3e-7):
+    tiny = 1e-30
+    qab = a + b
+    qap = a + 1
+    qam = a - 1
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    if abs(d) < tiny:
+        d = tiny
+    d = 1.0 / d
+    result = d
+
+    for m in range(1, max_iterations + 1):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        if abs(d) < tiny:
+            d = tiny
+        c = 1.0 + aa / c
+        if abs(c) < tiny:
+            c = tiny
+        d = 1.0 / d
+        result *= d * c
+
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        if abs(d) < tiny:
+            d = tiny
+        c = 1.0 + aa / c
+        if abs(c) < tiny:
+            c = tiny
+        d = 1.0 / d
+        delta = d * c
+        result *= delta
+        if abs(delta - 1.0) < epsilon:
+            break
+
+    return result
 
 
 def calculate_main_effects(project, factors):

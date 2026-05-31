@@ -282,6 +282,23 @@ select:focus {
   margin-bottom: 16px;
 }
 
+.center-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.center-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
 .factor-grid {
   display: grid;
   grid-template-columns: 74px repeat(5, minmax(112px, 1fr));
@@ -483,6 +500,35 @@ tbody tr:last-child td {
 .advisor-card li {
   color: var(--text);
   line-height: 1.55;
+}
+
+.stats-card,
+.anova-card {
+  grid-column: 1 / -1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 14px;
+}
+
+.stats-card p {
+  margin: 0 0 10px;
+  color: var(--text);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stats-grid span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px;
 }
 
 .recommendations {
@@ -696,6 +742,7 @@ tbody tr:last-child td {
   .condition-grid,
   .graph-section,
   .project-list,
+  .stats-grid,
   .surface-controls {
     grid-template-columns: 1fr;
   }

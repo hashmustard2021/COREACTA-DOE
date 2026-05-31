@@ -83,6 +83,39 @@ def build_project_report_pdf(project):
     story.append(basic_table(top_driver_rows))
     story.append(Spacer(1, 8))
 
+    story.append(section_title("Curvature", styles))
+    curvature = report["curvature"]
+    story.append(Paragraph(curvature["message"], styles["Body"]))
+    if curvature["available"]:
+        story.append(
+            basic_table(
+                [
+                    ["Factorial Mean", "Center Mean", "Curvature Effect", "Status"],
+                    [
+                        format_number(curvature["factorial_mean"]),
+                        format_number(curvature["center_mean"]),
+                        format_number(curvature["effect"]),
+                        "Possible curvature" if curvature["has_curvature"] else "No clear curvature",
+                    ],
+                ]
+            )
+        )
+    story.append(Spacer(1, 8))
+
+    story.append(section_title("ANOVA", styles))
+    anova_rows = [["Factor", "Effect", "p-value", "Significance"]]
+    for row in report["anova"]:
+        anova_rows.append(
+            [
+                row["factor"],
+                format_number(row["effect"]),
+                format_number(row["p_value"]),
+                "Significant" if row["significant"] else "Not significant",
+            ]
+        )
+    story.append(basic_table(anova_rows, repeat_rows=1))
+    story.append(Spacer(1, 8))
+
     story.append(section_title("Notes", styles))
     story.append(
         Paragraph(

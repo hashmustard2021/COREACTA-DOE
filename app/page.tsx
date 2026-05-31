@@ -104,6 +104,28 @@ type Report = {
   message: string;
   recommendations: Recommendation[];
   interpretation: string[];
+  pareto: Array<{
+    factor_key: string;
+    factor: string;
+    effect: number | null;
+    effect_abs: number | null;
+    direction: "HIGH" | "LOW" | "NEUTRAL";
+  }>;
+  curvature: {
+    available: boolean;
+    has_curvature: boolean;
+    factorial_mean: number | null;
+    center_mean: number | null;
+    effect: number | null;
+    message: string;
+  };
+  anova: Array<{
+    factor_key: string;
+    factor: string;
+    effect: number | null;
+    p_value: number | null;
+    significant: boolean;
+  }>;
 };
 
 type SurfaceData = {
@@ -245,6 +267,7 @@ function formatConditionValue(condition: Recommendation["conditions"][string]) {
 export default function Home() {
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
+  const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [designRuns, setDesignRuns] = useState<DesignRun[]>([]);
   const [yields, setYields] = useState<Record<number, string>>({});
@@ -295,6 +318,17 @@ export default function Home() {
         .filter((item) => item.yield !== null && Number.isFinite(item.yield)),
     [designRuns, yields],
   );
+  const paretoData = useMemo(() => {
+    if (!report) return [];
+    return report.pareto
+      .filter((item) => item.effect_abs !== null)
+      .map((item) => ({
+        key: item.factor_key,
+        name: item.factor,
+        effectAbs: Number(item.effect_abs),
+        direction: item.direction,
+      }));
+  }, [report]);
   const surfaceScale = useMemo(() => {
     if (!surfaceData) return { min: 0, max: 0 };
     const values = surfaceData.z_matrix.flat();
@@ -345,7 +379,12 @@ export default function Home() {
       });
       const design = await apiRequest<DesignRun[]>(
         `/api/projects/${createdProject.id}/design/`,
-        { method: "POST" },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            include_center_points: includeCenterPoints,
+          }),
+        },
       );
 
       setProject(createdProject);
@@ -670,6 +709,15 @@ export default function Home() {
           />
         </label>
 
+        <label className="center-option">
+          <input
+            type="checkbox"
+            checked={includeCenterPoints}
+            onChange={(event) => setIncludeCenterPoints(event.target.checked)}
+          />
+          <span>Center point 3회 추가</span>
+        </label>
+
         <div className="factor-grid">
           <span>Factor</span>
           <span>name_kr</span>
@@ -898,6 +946,47 @@ export default function Home() {
               )}
             </div>
 
+            <div className="stats-card">
+              <h3>Curvature</h3>
+              <p>{report.curvature.message}</p>
+              {report.curvature.available && (
+                <div className="stats-grid">
+                  <span>Factorial mean: {report.curvature.factorial_mean?.toFixed(2)}%</span>
+                  <span>Center mean: {report.curvature.center_mean?.toFixed(2)}%</span>
+                  <span>Curvature effect: {report.curvature.effect?.toFixed(2)}</span>
+                  <span>{report.curvature.has_curvature ? "Curvature 가능성 있음" : "뚜렷한 curvature 없음"}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="anova-card">
+              <h3>ANOVA</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Factor</th>
+                      <th>Effect</th>
+                      <th>p-value</th>
+                      <th>Significance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.anova.map((row) => (
+                      <tr key={row.factor_key}>
+                        <td>{row.factor}</td>
+                        <td className="numeric-cell">{formatEffect(row.effect)}</td>
+                        <td className="numeric-cell">
+                          {row.p_value === null ? "-" : row.p_value.toFixed(4)}
+                        </td>
+                        <td>{row.significant ? "Significant" : "Not significant"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div className="recommendations">
               <h3>Recommended Next Runs</h3>
               {report.recommendations.length === 0 ? (
@@ -988,6 +1077,47 @@ export default function Home() {
                 ))}
               </div>
             </>
+          )}
+        </article>
+
+        <article className="card chart-card">
+          <div className="card-heading">
+            <div>
+              <span>Visualization</span>
+              <h2>Pareto Chart</h2>
+            </div>
+          </div>
+
+          {paretoData.length === 0 ? (
+            <p className="empty-state">시각화할 데이터가 충분하지 않습니다.</p>
+          ) : (
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={paretoData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid stroke="#e6edf1" vertical={false} />
+                  <XAxis
+                    dataKey="key"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#667586", fontSize: 12, fontWeight: 700 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#667586", fontSize: 12 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(15, 118, 110, 0.07)" }}
+                    formatter={(value) => [Number(value).toFixed(2), "|Effect|"]}
+                    labelFormatter={(label) => {
+                      const item = paretoData.find((effect) => effect.key === label);
+                      return item ? item.name : label;
+                    }}
+                  />
+                  <Bar dataKey="effectAbs" fill="#0f766e" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </article>
 

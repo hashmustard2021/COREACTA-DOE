@@ -101,6 +101,20 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(design[7]["run_order"], 8)
         self.assertEqual(design[7]["levels"], {"A": 1, "B": 1, "C": 1, "D": 1})
 
+    def test_design_creation_api_can_add_center_points(self):
+        project = self.create_project()
+        design = self.create_design(project["id"], include_center_points=True)
+
+        self.assertEqual(len(design), 11)
+        center_runs = design[8:]
+        self.assertEqual([run["run_order"] for run in center_runs], [9, 10, 11])
+        for run in center_runs:
+            self.assertEqual(run["levels"], {"A": 0, "B": 0, "C": 0, "D": 0})
+            self.assertEqual(Decimal(str(run["values"]["A"])), Decimal("75.0000"))
+            self.assertEqual(Decimal(str(run["values"]["B"])), Decimal("2.5000"))
+            self.assertEqual(Decimal(str(run["values"]["C"])), Decimal("2.7500"))
+            self.assertEqual(Decimal(str(run["values"]["D"])), Decimal("0.1750"))
+
     def test_result_input_api(self):
         project = self.create_project()
         self.create_design(project["id"])
@@ -148,6 +162,10 @@ class SuzukiCouplingDoeApiTests(APITestCase):
 
         top_drivers = report["top_drivers"]
         self.assertEqual([item["factor_key"] for item in top_drivers], ["C", "A", "B", "D"])
+        self.assertEqual([item["factor_key"] for item in report["pareto"]], ["C", "A", "B", "D"])
+        self.assertFalse(report["curvature"]["available"])
+        self.assertEqual(len(report["anova"]), 4)
+        self.assertTrue(all("p_value" in row for row in report["anova"]))
 
         interpretation = report["interpretation"]
         self.assertGreaterEqual(len(interpretation), 5)
@@ -186,6 +204,29 @@ class SuzukiCouplingDoeApiTests(APITestCase):
                 self.assertEqual(Decimal(str(condition["high"])), Decimal(str(factor["high"])))
                 self.assertGreaterEqual(value, Decimal(str(factor["low"])))
                 self.assertLessEqual(value, Decimal(str(factor["high"])))
+
+    def test_report_with_center_points_returns_curvature_and_anova(self):
+        project = self.create_project()
+        self.create_design(project["id"], include_center_points=True)
+        self.submit_results(project["id"])
+        for run_order, result_value in zip((9, 10, 11), ("62", "64", "63")):
+            response = self.client.post(
+                f"/api/projects/{project['id']}/results/",
+                {"run_order": run_order, "response": result_value},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertTrue(response.data["success"])
+
+        response = self.client.get(f"/api/projects/{project['id']}/report/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        report = response.data["data"]
+        self.assertTrue(report["curvature"]["available"])
+        self.assertEqual(report["curvature"]["center_mean"], 63.0)
+        self.assertEqual(len(report["anova"]), 4)
+        self.assertTrue(all("p_value" in row for row in report["anova"]))
+        self.assertTrue(all("significant" in row for row in report["anova"]))
 
     def test_result_input_rejects_invalid_yield_percent(self):
         project = self.create_project()
@@ -270,8 +311,12 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(response.data["message"], "")
         return response.data["data"]
 
-    def create_design(self, project_id):
-        response = self.client.post(f"/api/projects/{project_id}/design/")
+    def create_design(self, project_id, include_center_points=False):
+        response = self.client.post(
+            f"/api/projects/{project_id}/design/",
+            {"include_center_points": include_center_points},
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data["success"])
         self.assertEqual(response.data["message"], "")
