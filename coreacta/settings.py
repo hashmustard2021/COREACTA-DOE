@@ -5,7 +5,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-coreacta-dev-key"
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -17,6 +18,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "doe",
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+}
 
 MIDDLEWARE = [
     "coreacta.middleware.DevCorsMiddleware",

@@ -24,12 +24,18 @@ import {
 } from "recharts";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 type ApiResponse<T> = {
   success: boolean;
   data: T;
   message: string;
+};
+
+type User = {
+  id: number;
+  username: string;
+  email: string;
 };
 
 type FactorInput = {
@@ -188,15 +194,40 @@ const defaultFactors: FactorInput[] = [
   },
 ];
 
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
+function getCookie(name: string) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length !== 2) return "";
+  return parts.pop()?.split(";").shift() ?? "";
+}
+
+async function ensureCsrfToken() {
+  if (getCookie("csrftoken")) return;
+  await fetch(`${API_BASE_URL}/api/auth/csrf/`, {
+    credentials: "include",
     mode: "cors",
     cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+  });
+}
+
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method?.toUpperCase() ?? "GET";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers as Record<string, string> | undefined) ?? {}),
+  };
+
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    await ensureCsrfToken();
+    headers["X-CSRFToken"] = getCookie("csrftoken");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    mode: "cors",
+    cache: "no-store",
+    headers,
   });
 
   let body: ApiResponse<T | null>;
@@ -265,6 +296,10 @@ function formatConditionValue(condition: Recommendation["conditions"][string]) {
 }
 
 export default function Home() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
@@ -339,8 +374,68 @@ export default function Home() {
   }, [surfaceData]);
 
   useEffect(() => {
-    void loadProjects();
+    void initializeAuth();
   }, []);
+
+  async function initializeAuth() {
+    try {
+      await ensureCsrfToken();
+      const user = await apiRequest<User>("/api/auth/me/");
+      setCurrentUser(user);
+      await loadProjects();
+    } catch {
+      setCurrentUser(null);
+    } finally {
+      setIsAuthChecked(true);
+    }
+  }
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const user = await apiRequest<User>("/api/auth/login/", {
+        method: "POST",
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword,
+        }),
+      });
+      setCurrentUser(user);
+      setLoginPassword("");
+      setStatusText(`Logged in as ${user.username}.`);
+      await loadProjects();
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Login failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      await apiRequest<Record<string, never>>("/api/auth/logout/", { method: "POST" });
+      setCurrentUser(null);
+      setProject(null);
+      setDesignRuns([]);
+      setYields({});
+      setReport(null);
+      setProjectList([]);
+      setSurfaceData(null);
+      setStatusText("Logged out.");
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Logout failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
     setFactors((current) =>
@@ -462,6 +557,7 @@ export default function Home() {
       const response = await fetch(
         `${API_BASE_URL}/api/projects/${project.id}/design.csv/`,
         {
+          credentials: "include",
           mode: "cors",
           cache: "no-store",
         },
@@ -504,6 +600,7 @@ export default function Home() {
       const response = await fetch(
         `${API_BASE_URL}/api/projects/${project.id}/report.pdf/`,
         {
+          credentials: "include",
           mode: "cors",
           cache: "no-store",
         },
@@ -636,11 +733,76 @@ export default function Home() {
           <p>감이 아니라 근거로 실험하세요.</p>
         </div>
         <div className="hero-meta">
-          <span>API</span>
-          <strong>{API_BASE_URL}</strong>
+          {currentUser ? (
+            <>
+              <span>Signed in</span>
+              <strong>{currentUser.username}</strong>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={isBusy}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <span>API</span>
+              <strong>{API_BASE_URL}</strong>
+            </>
+          )}
         </div>
       </section>
 
+      {!isAuthChecked && (
+        <section className="card auth-card">
+          <p className="empty-state">Checking login status...</p>
+        </section>
+      )}
+
+      {isAuthChecked && !currentUser && (
+        <>
+          {(errorText || statusText) && (
+            <div className={errorText ? "notice error" : "notice"}>
+              {errorText || statusText}
+            </div>
+          )}
+          <form className="card auth-card" onSubmit={handleLogin}>
+            <div className="card-heading">
+              <div>
+                <span>Login</span>
+                <h2>Sign in to Coreacta DOE</h2>
+              </div>
+              <button type="submit" disabled={isBusy}>
+                {isBusy ? "Signing in..." : "Login"}
+              </button>
+            </div>
+            <label className="field">
+              <span>Username</span>
+              <input
+                value={loginUsername}
+                onChange={(event) => setLoginUsername(event.target.value)}
+                autoComplete="username"
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </label>
+          </form>
+        </>
+      )}
+
+      {currentUser && (
+        <>
       <section className="card project-list-card">
         <div className="card-heading">
           <div>
@@ -1252,6 +1414,8 @@ export default function Home() {
           )}
         </article>
       </section>
+        </>
+      )}
     </main>
   );
 }

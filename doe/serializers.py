@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 
 from .models import DesignRun, Factor, Project, Result
@@ -20,11 +21,12 @@ class FactorSerializer(serializers.ModelSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     factors = FactorSerializer(many=True)
+    owner = serializers.CharField(source="owner.username", read_only=True)
 
     class Meta:
         model = Project
-        fields = ["id", "name", "description", "factors", "created_at", "updated_at"]
-        read_only_fields = ["created_at", "updated_at"]
+        fields = ["id", "owner", "name", "description", "factors", "created_at", "updated_at"]
+        read_only_fields = ["owner", "created_at", "updated_at"]
 
     def validate_factors(self, factors):
         if not 1 <= len(factors) <= 4:
@@ -43,7 +45,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         factors_data = validated_data.pop("factors")
-        project = Project.objects.create(**validated_data)
+        owner = self.context["request"].user
+        project = Project.objects.create(owner=owner, **validated_data)
         for factor_data in factors_data:
             Factor.objects.create(project=project, **factor_data)
         return project
@@ -51,6 +54,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 class ProjectListSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(source="id", read_only=True)
+    owner = serializers.CharField(source="owner.username", read_only=True)
     run_budget = serializers.SerializerMethodField()
     response_name = serializers.SerializerMethodField()
     factor_count = serializers.SerializerMethodField()
@@ -60,6 +64,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         model = Project
         fields = [
             "project_id",
+            "owner",
             "name",
             "created_at",
             "run_budget",
@@ -115,3 +120,19 @@ class ResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = ["id", "run_order", "response", "note", "created_at", "updated_at"]
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(trim_whitespace=False)
+
+    def validate(self, attrs):
+        user = authenticate(
+            request=self.context.get("request"),
+            username=attrs["username"],
+            password=attrs["password"],
+        )
+        if user is None:
+            raise serializers.ValidationError("Invalid username or password.")
+        attrs["user"] = user
+        return attrs

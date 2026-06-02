@@ -17,7 +17,8 @@ class DevCorsMiddleware:
         if settings.DEBUG and is_local_dev_origin(origin):
             response["Access-Control-Allow-Origin"] = origin
             response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            response["Access-Control-Allow-Headers"] = "Content-Type"
+            response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
+            response["Access-Control-Allow-Credentials"] = "true"
 
         return response
 

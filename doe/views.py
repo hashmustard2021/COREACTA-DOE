@@ -1,8 +1,11 @@
 import csv
 from io import StringIO
 
+from django.contrib.auth import login, logout
+from django.middleware.csrf import get_token
 from django.db import OperationalError
 from django.http import Http404, HttpResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -12,6 +15,7 @@ from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
     FactorSerializer,
+    LoginSerializer,
     ProjectListSerializer,
     ProjectSerializer,
     ResultSerializer,
@@ -25,13 +29,49 @@ from .services import (
 )
 
 
+@ensure_csrf_cookie
+@api_view(["GET"])
+def auth_csrf(request):
+    return api_success({"csrfToken": get_token(request)})
+
+
+@api_view(["GET"])
+def auth_me(request):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    return api_success(user_payload(request.user))
+
+
+@api_view(["POST"])
+def auth_login(request):
+    serializer = LoginSerializer(data=request.data, context={"request": request})
+    if not serializer.is_valid():
+        return api_error(format_validation_errors(serializer.errors))
+
+    user = serializer.validated_data["user"]
+    login(request, user)
+    return api_success(user_payload(user))
+
+
+@api_view(["POST"])
+def auth_logout(request):
+    logout(request)
+    return api_success({})
+
+
 @api_view(["GET", "POST"])
 def projects(request):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     if request.method == "GET":
-        queryset = Project.objects.order_by("-created_at")
+        queryset = Project.objects.filter(owner=request.user).order_by("-created_at")
         return api_success(ProjectListSerializer(queryset, many=True).data)
 
-    serializer = ProjectSerializer(data=request.data)
+    serializer = ProjectSerializer(data=request.data, context={"request": request})
     if not serializer.is_valid():
         return api_error(format_validation_errors(serializer.errors))
 
@@ -41,8 +81,12 @@ def projects(request):
 
 @api_view(["GET"])
 def project_detail(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     try:
-        project = get_project(project_id)
+        project = get_project(request, project_id)
     except Http404 as exc:
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
 
@@ -68,8 +112,12 @@ def project_detail(request, project_id):
 
 @api_view(["POST"])
 def create_design(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     try:
-        project = get_project(project_id)
+        project = get_project(request, project_id)
         include_center_points = bool(request.data.get("include_center_points", False))
         runs = create_fractional_factorial_design(
             project,
@@ -88,8 +136,12 @@ def create_design(request, project_id):
 
 @api_view(["POST"])
 def create_or_update_result(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     try:
-        project = get_project(project_id)
+        project = get_project(request, project_id)
     except Http404 as exc:
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
 
@@ -112,8 +164,12 @@ def create_or_update_result(request, project_id):
 
 @api_view(["GET"])
 def report(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     try:
-        project = get_project(project_id)
+        project = get_project(request, project_id)
     except Http404 as exc:
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
 
@@ -122,8 +178,12 @@ def report(request, project_id):
 
 @api_view(["GET"])
 def surface(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
     try:
-        project = get_project(project_id)
+        project = get_project(request, project_id)
         surface_data = build_response_surface(
             project,
             request.query_params.get("x_factor"),
@@ -139,7 +199,11 @@ def surface(request, project_id):
 
 @api_view(["GET"])
 def download_design_csv(request, project_id):
-    project = get_project(project_id)
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    project = get_project(request, project_id)
     factors = list(project.factors.order_by("idx"))
     runs = project.design_runs.select_related("result").order_by("run_order")
 
@@ -165,7 +229,11 @@ def download_design_csv(request, project_id):
 
 @api_view(["GET"])
 def download_report_pdf(request, project_id):
-    project = get_project(project_id)
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    project = get_project(request, project_id)
     pdf_bytes = build_project_report_pdf(project)
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
@@ -175,11 +243,21 @@ def download_report_pdf(request, project_id):
     return response
 
 
-def get_project(project_id):
+def get_project(request, project_id):
     try:
-        return Project.objects.get(pk=project_id)
+        return Project.objects.get(pk=project_id, owner=request.user)
     except Project.DoesNotExist:
         raise Http404("Project not found.")
+
+
+def require_authenticated(request):
+    if request.user.is_authenticated:
+        return None
+    return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+def user_payload(user):
+    return {"id": user.id, "username": user.username, "email": user.email}
 
 
 def api_success(data, status_code=status.HTTP_200_OK, message=""):

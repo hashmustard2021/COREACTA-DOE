@@ -1,7 +1,8 @@
 from decimal import Decimal
 
+from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 
 class SuzukiCouplingDoeApiTests(APITestCase):
@@ -45,12 +46,66 @@ class SuzukiCouplingDoeApiTests(APITestCase):
     }
     result_values = [42, 55, 48, 51, 46, 58, 53, 61]
 
+    def setUp(self):
+        self.user = User.objects.create_user(username="chemist_a", password="pass-a")
+        self.other_user = User.objects.create_user(username="chemist_b", password="pass-b")
+        self.client.force_authenticate(user=self.user)
+
     def test_project_creation_api(self):
         project = self.create_project()
 
         self.assertEqual(project["name"], "Suzuki coupling optimization")
+        self.assertEqual(project["owner"], "chemist_a")
         self.assertEqual(len(project["factors"]), 4)
         self.assertEqual(project["factors"][0]["display_name"], "온도(Temperature, °C)")
+
+    def test_anonymous_api_access_is_rejected(self):
+        anonymous_client = APIClient()
+
+        response = anonymous_client.get("/api/projects/")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(response.data["success"])
+
+    def test_user_cannot_access_other_users_projects(self):
+        project = self.create_project()
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other_user)
+
+        list_response = other_client.get("/api/projects/")
+        detail_response = other_client.get(f"/api/projects/{project['id']}/")
+        design_response = other_client.post(f"/api/projects/{project['id']}/design/")
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["data"], [])
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(design_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_login_logout_and_me_api(self):
+        session_client = APIClient(enforce_csrf_checks=True)
+        csrf_response = session_client.get("/api/auth/csrf/")
+        csrf_token = csrf_response.data["data"]["csrfToken"]
+
+        login_response = session_client.post(
+            "/api/auth/login/",
+            {"username": "chemist_a", "password": "pass-a"},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        me_response = session_client.get("/api/auth/me/")
+        csrf_token = session_client.cookies["csrftoken"].value
+        logout_response = session_client.post(
+            "/api/auth/logout/",
+            {},
+            format="json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(login_response.data["data"]["username"], "chemist_a")
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_response.data["data"]["username"], "chemist_a")
+        self.assertEqual(logout_response.status_code, status.HTTP_200_OK)
 
     def test_project_validation_error_uses_common_response_format(self):
         response = self.client.post("/api/projects/", {"name": ""}, format="json")

@@ -175,6 +175,16 @@ select:focus {
   word-break: break-all;
 }
 
+.hero-meta .secondary-button {
+  margin-top: 6px;
+}
+
+.auth-card {
+  display: grid;
+  gap: 14px;
+  max-width: 520px;
+}
+
 .notice {
   margin-bottom: 14px;
   border: 1px solid #b6ddd4;

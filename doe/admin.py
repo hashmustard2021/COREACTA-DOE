@@ -28,9 +28,9 @@ class DesignRunInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "factor_count", "design_run_count", "created_at", "updated_at")
-    list_filter = ("created_at", "updated_at")
-    search_fields = ("name", "description", "factors__name_kr", "factors__name_en")
+    list_display = ("id", "name", "owner", "factor_count", "design_run_count", "created_at", "updated_at")
+    list_filter = ("owner", "created_at", "updated_at")
+    search_fields = ("name", "description", "owner__username", "factors__name_kr", "factors__name_en")
     inlines = (FactorInline, DesignRunInline)
     ordering = ("-created_at",)
 
@@ -45,17 +45,21 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(Factor)
 class FactorAdmin(admin.ModelAdmin):
-    list_display = ("id", "project", "idx", "display_name", "unit", "low", "high")
-    list_filter = ("project", "idx", "unit")
-    search_fields = ("project__name", "name_kr", "name_en", "unit")
+    list_display = ("id", "project", "owner", "idx", "display_name", "unit", "low", "high")
+    list_filter = ("project__owner", "project", "idx", "unit")
+    search_fields = ("project__name", "project__owner__username", "name_kr", "name_en", "unit")
     ordering = ("project", "idx")
+
+    @admin.display(description="Owner")
+    def owner(self, obj):
+        return obj.project.owner
 
 
 @admin.register(DesignRun)
 class DesignRunAdmin(admin.ModelAdmin):
-    list_display = ("id", "project", "run_order", "levels", "values", "result_response", "created_at")
-    list_filter = ("project", "run_order", "created_at")
-    search_fields = ("project__name",)
+    list_display = ("id", "project", "owner", "run_order", "levels", "values", "result_response", "created_at")
+    list_filter = ("project__owner", "project", "run_order", "created_at")
+    search_fields = ("project__name", "project__owner__username")
     ordering = ("project", "run_order")
 
     @admin.display(description="Result")
@@ -64,17 +68,25 @@ class DesignRunAdmin(admin.ModelAdmin):
             return "-"
         return obj.result.response
 
+    @admin.display(description="Owner")
+    def owner(self, obj):
+        return obj.project.owner
+
 
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):
-    list_display = ("id", "project", "run_order", "response", "note", "created_at", "updated_at")
-    list_filter = ("design_run__project", "design_run__run_order", "created_at", "updated_at")
-    search_fields = ("design_run__project__name", "note")
+    list_display = ("id", "project", "owner", "run_order", "response", "note", "created_at", "updated_at")
+    list_filter = ("design_run__project__owner", "design_run__project", "design_run__run_order", "created_at", "updated_at")
+    search_fields = ("design_run__project__name", "design_run__project__owner__username", "note")
     ordering = ("design_run__project", "design_run__run_order")
 
     @admin.display(description="Project")
     def project(self, obj):
         return obj.design_run.project
+
+    @admin.display(description="Owner")
+    def owner(self, obj):
+        return obj.design_run.project.owner
 
     @admin.display(description="Run")
     def run_order(self, obj):
