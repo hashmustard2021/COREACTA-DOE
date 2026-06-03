@@ -28,15 +28,28 @@ class Project(models.Model):
 
 
 class Factor(models.Model):
+    CONTINUOUS = "continuous"
+    CATEGORICAL = "categorical"
+    FACTOR_TYPE_CHOICES = [
+        (CONTINUOUS, "Continuous"),
+        (CATEGORICAL, "Categorical"),
+    ]
+
     project = models.ForeignKey(Project, related_name="factors", on_delete=models.CASCADE)
     idx = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(4)]
     )
+    factor_type = models.CharField(
+        max_length=20,
+        choices=FACTOR_TYPE_CHOICES,
+        default=CONTINUOUS,
+    )
     name_kr = models.CharField(max_length=80)
     name_en = models.CharField(max_length=80)
     unit = models.CharField(max_length=30, blank=True)
-    low = models.DecimalField(max_digits=12, decimal_places=4)
-    high = models.DecimalField(max_digits=12, decimal_places=4)
+    low = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    high = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    levels = models.JSONField(blank=True, default=list)
 
     class Meta:
         constraints = [
@@ -44,8 +57,16 @@ class Factor(models.Model):
                 fields=["project", "idx"], name="unique_factor_idx_per_project"
             ),
             models.CheckConstraint(
-                check=models.Q(low__lt=models.F("high")),
-                name="factor_low_smaller_than_high",
+                check=(
+                    models.Q(
+                        factor_type="continuous",
+                        low__isnull=False,
+                        high__isnull=False,
+                        low__lt=models.F("high"),
+                    )
+                    | models.Q(factor_type="categorical")
+                ),
+                name="factor_continuous_range_valid",
             ),
         ]
         ordering = ["idx"]
@@ -58,12 +79,22 @@ class Factor(models.Model):
         return "ABCD"[self.idx - 1]
 
     @property
+    def is_categorical(self):
+        return self.factor_type == self.CATEGORICAL
+
+    @property
+    def is_continuous(self):
+        return self.factor_type == self.CONTINUOUS
+
+    @property
     def display_name(self):
         unit = f", {self.unit}" if self.unit else ""
         return f"{self.name_kr}({self.name_en}{unit})"
 
     @property
     def mid(self):
+        if self.low is None or self.high is None:
+            return None
         return (self.low + self.high) / Decimal("2")
 
 

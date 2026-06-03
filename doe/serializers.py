@@ -9,13 +9,61 @@ class FactorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Factor
-        fields = ["id", "idx", "name_kr", "name_en", "unit", "low", "high", "display_name"]
+        fields = [
+            "id",
+            "idx",
+            "factor_type",
+            "name_kr",
+            "name_en",
+            "unit",
+            "low",
+            "high",
+            "levels",
+            "display_name",
+        ]
 
     def validate(self, attrs):
+        factor_type = attrs.get(
+            "factor_type",
+            getattr(self.instance, "factor_type", Factor.CONTINUOUS),
+        )
         low = attrs.get("low", getattr(self.instance, "low", None))
         high = attrs.get("high", getattr(self.instance, "high", None))
-        if low is not None and high is not None and low >= high:
-            raise serializers.ValidationError("low must be smaller than high.")
+        levels = attrs.get("levels", getattr(self.instance, "levels", []))
+
+        if factor_type == Factor.CONTINUOUS:
+            if low is None or high is None:
+                raise serializers.ValidationError(
+                    "continuous factors require both low and high."
+                )
+            if low >= high:
+                raise serializers.ValidationError("low must be smaller than high.")
+            attrs["levels"] = []
+            return attrs
+
+        if factor_type == Factor.CATEGORICAL:
+            if isinstance(levels, str):
+                levels = levels.replace("\n", ",").split(",")
+            cleaned_levels = [
+                str(level).strip()
+                for level in levels
+                if str(level).strip()
+            ]
+            if len(cleaned_levels) < 2:
+                raise serializers.ValidationError(
+                    "categorical factors require at least 2 levels."
+                )
+            if len(cleaned_levels) > 2:
+                raise serializers.ValidationError(
+                    "Coreacta DOE v2 supports exactly 2 categorical levels."
+                )
+            attrs["levels"] = cleaned_levels
+            attrs["low"] = None
+            attrs["high"] = None
+            attrs["unit"] = ""
+            return attrs
+
+        raise serializers.ValidationError("factor_type must be continuous or categorical.")
         return attrs
 
 

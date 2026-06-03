@@ -47,6 +47,44 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         ],
     }
     result_values = [42, 55, 48, 51, 46, 58, 53, 61]
+    mixed_factor_payload = {
+        "name": "Mixed factor Suzuki optimization",
+        "description": "Mixed DOE test",
+        "factors": [
+            {
+                "idx": 1,
+                "factor_type": "continuous",
+                "name_kr": "온도",
+                "name_en": "Temperature",
+                "unit": "°C",
+                "low": "60",
+                "high": "90",
+            },
+            {
+                "idx": 2,
+                "factor_type": "continuous",
+                "name_kr": "시간",
+                "name_en": "Time",
+                "unit": "h",
+                "low": "1",
+                "high": "4",
+            },
+            {
+                "idx": 3,
+                "factor_type": "categorical",
+                "name_kr": "용매",
+                "name_en": "Solvent",
+                "levels": ["THF", "Toluene"],
+            },
+            {
+                "idx": 4,
+                "factor_type": "categorical",
+                "name_kr": "염기",
+                "name_en": "Base",
+                "levels": ["K2CO3", "Cs2CO3"],
+            },
+        ],
+    }
 
     def setUp(self):
         self.user = User.objects.create_user(username="chemist_a", password="pass-a")
@@ -227,6 +265,81 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(design[0]["levels"], {"A": -1, "B": -1, "C": -1, "D": -1})
         self.assertEqual(design[7]["run_order"], 8)
         self.assertEqual(design[7]["levels"], {"A": 1, "B": 1, "C": 1, "D": 1})
+
+    def test_mixed_categorical_design_report_exports_and_surface_guard(self):
+        project = self.create_project(self.mixed_factor_payload)
+        design = self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        self.assertEqual(design[0]["values"]["C"], "THF")
+        self.assertEqual(design[0]["values"]["D"], "K2CO3")
+        self.assertEqual(design[7]["values"]["C"], "Toluene")
+        self.assertEqual(design[7]["values"]["D"], "Cs2CO3")
+
+        report_response = self.client.get(f"/api/projects/{project['id']}/report/")
+        self.assertEqual(report_response.status_code, status.HTTP_200_OK)
+        report = report_response.data["data"]
+        solvent_effect = next(
+            effect for effect in report["effects"] if effect["factor_key"] == "C"
+        )
+        self.assertEqual(solvent_effect["factor_type"], "categorical")
+        self.assertEqual(solvent_effect["direction"], "HIGH")
+        self.assertIn("Toluene", solvent_effect["direction_label"])
+        self.assertIn("THF", solvent_effect["direction_label"])
+        self.assertTrue(
+            any(
+                condition["value"] in {"THF", "Toluene", "K2CO3", "Cs2CO3"}
+                for recommendation in report["recommendations"]
+                for condition in recommendation["conditions"].values()
+                if condition["factor_type"] == "categorical"
+            )
+        )
+
+        surface_response = self.client.get(
+            f"/api/projects/{project['id']}/surface/",
+            {
+                "x_factor": "용매(Solvent)",
+                "y_factor": "온도(Temperature, °C)",
+            },
+        )
+        self.assertEqual(surface_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(surface_response.data["success"])
+        self.assertIn("continuous factors only", surface_response.data["message"])
+
+        csv_response = self.client.get(f"/api/projects/{project['id']}/design.csv/")
+        self.assertEqual(csv_response.status_code, status.HTTP_200_OK)
+        csv_text = csv_response.content.decode("utf-8-sig")
+        self.assertIn("THF", csv_text)
+        self.assertIn("Toluene", csv_text)
+        self.assertIn("K2CO3", csv_text)
+        self.assertIn("Cs2CO3", csv_text)
+
+        pdf_response = self.client.get(f"/api/projects/{project['id']}/report.pdf/")
+        self.assertEqual(pdf_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+        self.assertTrue(pdf_response.content.startswith(b"%PDF"))
+
+    def test_categorical_factor_rejects_more_than_two_levels(self):
+        payload = {
+            **self.mixed_factor_payload,
+            "factors": [
+                *self.mixed_factor_payload["factors"][:2],
+                {
+                    "idx": 3,
+                    "factor_type": "categorical",
+                    "name_kr": "용매",
+                    "name_en": "Solvent",
+                    "levels": ["THF", "Toluene", "DMSO"],
+                },
+                self.mixed_factor_payload["factors"][3],
+            ],
+        }
+
+        response = self.client.post("/api/projects/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
+        self.assertIn("exactly 2 categorical levels", response.data["message"])
 
     def test_design_creation_api_can_add_center_points(self):
         project = self.create_project()
@@ -431,8 +544,12 @@ class SuzukiCouplingDoeApiTests(APITestCase):
                 self.assertGreaterEqual(predicted_yield, 0)
                 self.assertLessEqual(predicted_yield, 100)
 
-    def create_project(self):
-        response = self.client.post("/api/projects/", self.project_payload, format="json")
+    def create_project(self, payload=None):
+        response = self.client.post(
+            "/api/projects/",
+            payload or self.project_payload,
+            format="json",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data["success"])
         self.assertEqual(response.data["message"], "")

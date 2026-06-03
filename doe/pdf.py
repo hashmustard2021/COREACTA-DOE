@@ -44,11 +44,8 @@ def build_project_report_pdf(project):
     story.append(section_title("Factors", styles))
     story.append(
         basic_table(
-            [["#", "Factor", "Low", "High"]]
-            + [
-                [factor.idx, factor.display_name, factor.low, factor.high]
-                for factor in factors
-            ]
+            [["#", "Factor", "Type", "Low / Levels", "High"]]
+            + [factor_summary_row(factor) for factor in factors]
         )
     )
     story.append(Spacer(1, 8))
@@ -77,7 +74,7 @@ def build_project_report_pdf(project):
                 effect["display_name"],
                 format_number(effect.get("effect_abs")),
                 format_number(effect["effect"]),
-                effect["direction"],
+                effect.get("direction_label") or effect["direction"],
             ]
         )
     story.append(basic_table(top_driver_rows))
@@ -251,4 +248,17 @@ def format_predicted_yield(value):
 def format_condition(key, condition):
     unit = condition.get("unit", "")
     unit_suffix = f" {unit}" if unit else ""
-    return f"{key}: {condition['direction']} ({condition['value']}{unit_suffix})"
+    direction = condition.get("direction_label") or condition["direction"]
+    return f"{key}: {direction} ({condition['value']}{unit_suffix})"
+
+
+def factor_summary_row(factor):
+    if factor.is_categorical:
+        return [
+            factor.idx,
+            factor.display_name,
+            "Categorical",
+            ", ".join(factor.levels or []),
+            "",
+        ]
+    return [factor.idx, factor.display_name, "Continuous", factor.low, factor.high]

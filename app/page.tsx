@@ -49,11 +49,26 @@ type User = {
 
 type FactorInput = {
   idx: number;
+  factor_type: "continuous" | "categorical";
   name_kr: string;
   name_en: string;
   unit: string;
   low: string;
   high: string;
+  levels: string;
+};
+
+type ProjectFactor = {
+  id: number;
+  idx: number;
+  factor_type: "continuous" | "categorical";
+  name_kr: string;
+  name_en: string;
+  unit: string;
+  low: string | null;
+  high: string | null;
+  levels: string[];
+  display_name: string;
 };
 
 type Project = {
@@ -63,7 +78,7 @@ type Project = {
   slogan: string;
   response_name: string;
   goal: string;
-  factors: Array<FactorInput & { id: number; display_name: string }>;
+  factors: ProjectFactor[];
 };
 
 type ProjectListItem = {
@@ -91,10 +106,12 @@ type DesignRun = {
 type Effect = {
   factor_idx: number;
   factor_key: string;
+  factor_type: "continuous" | "categorical";
   display_name: string;
   effect: number | null;
   effect_abs?: number | null;
   direction: "HIGH" | "LOW" | "NEUTRAL";
+  direction_label?: string;
   interpretation?: string;
 };
 
@@ -108,10 +125,13 @@ type Recommendation = {
       factor_idx: number;
       display_name: string;
       direction: "HIGH" | "LOW" | "NEUTRAL";
+      direction_label?: string;
       value: number | string;
       unit?: string;
       low?: number | string;
       high?: number | string;
+      factor_type?: "continuous" | "categorical";
+      levels?: string[];
     }
   >;
 };
@@ -129,6 +149,7 @@ type Report = {
     effect: number | null;
     effect_abs: number | null;
     direction: "HIGH" | "LOW" | "NEUTRAL";
+    direction_label?: string;
   }>;
   curvature: {
     available: boolean;
@@ -175,35 +196,43 @@ type ProjectDetail = {
 const defaultFactors: FactorInput[] = [
   {
     idx: 1,
+    factor_type: "continuous",
     name_kr: "온도",
     name_en: "Temperature",
     unit: "°C",
     low: "60",
     high: "90",
+    levels: "",
   },
   {
     idx: 2,
+    factor_type: "continuous",
     name_kr: "시간",
     name_en: "Time",
     unit: "h",
     low: "1",
     high: "4",
+    levels: "",
   },
   {
     idx: 3,
+    factor_type: "continuous",
     name_kr: "촉매량",
     name_en: "Catalyst loading",
     unit: "mol%",
     low: "0.5",
     high: "5",
+    levels: "",
   },
   {
     idx: 4,
+    factor_type: "continuous",
     name_kr: "농도",
     name_en: "Concentration",
     unit: "M",
     low: "0.05",
     high: "0.30",
+    levels: "",
   },
 ];
 
@@ -282,6 +311,43 @@ function factorDisplayName(factor: FactorInput) {
   return `${factor.name_kr}(${factor.name_en}${factor.unit ? `, ${factor.unit}` : ""})`;
 }
 
+function parseFactorLevels(levels: string) {
+  return levels
+    .split(/[\n,]/)
+    .map((level) => level.trim())
+    .filter(Boolean);
+}
+
+function serializeFactorInput(factor: FactorInput) {
+  if (factor.factor_type === "categorical") {
+    return {
+      idx: factor.idx,
+      factor_type: "categorical",
+      name_kr: factor.name_kr,
+      name_en: factor.name_en,
+      unit: "",
+      low: null,
+      high: null,
+      levels: parseFactorLevels(factor.levels),
+    };
+  }
+
+  return {
+    idx: factor.idx,
+    factor_type: "continuous",
+    name_kr: factor.name_kr,
+    name_en: factor.name_en,
+    unit: factor.unit,
+    low: factor.low,
+    high: factor.high,
+    levels: [],
+  };
+}
+
+function continuousFactors(factors: FactorInput[]) {
+  return factors.filter((factor) => factor.factor_type === "continuous");
+}
+
 function heatColor(value: number, min: number, max: number) {
   if (max === min) return "hsl(174, 50%, 60%)";
   const ratio = (value - min) / (max - min);
@@ -340,6 +406,7 @@ export default function Home() {
     () => factors.map((factor) => "ABCD"[factor.idx - 1]),
     [factors],
   );
+  const surfaceFactorOptions = useMemo(() => continuousFactors(factors), [factors]);
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -352,7 +419,7 @@ export default function Home() {
           key: effect.factor_key,
           name: effect.display_name,
           effect: value,
-          directionLabel: effectDirectionLabel(value),
+          directionLabel: effect.direction_label || effectDirectionLabel(value),
         };
       });
   }, [report]);
@@ -378,6 +445,7 @@ export default function Home() {
         name: item.factor,
         effectAbs: Number(item.effect_abs),
         direction: item.direction,
+        directionLabel: item.direction_label || item.direction,
       }));
   }, [report]);
   const surfaceScale = useMemo(() => {
@@ -392,6 +460,22 @@ export default function Home() {
   useEffect(() => {
     void initializeAuth();
   }, []);
+
+  useEffect(() => {
+    if (surfaceFactorOptions.length === 0) {
+      setSurfaceData(null);
+      setSurfaceMessage("Contour plot requires at least two continuous factors.");
+      return;
+    }
+
+    const optionNames = surfaceFactorOptions.map(factorDisplayName);
+    if (!optionNames.includes(surfaceXFactor)) {
+      setSurfaceXFactor(optionNames[0]);
+    }
+    if (!optionNames.includes(surfaceYFactor)) {
+      setSurfaceYFactor(optionNames[1] ?? optionNames[0]);
+    }
+  }, [surfaceFactorOptions, surfaceXFactor, surfaceYFactor]);
 
   async function initializeAuth() {
     try {
@@ -461,7 +545,18 @@ export default function Home() {
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
     setFactors((current) =>
       current.map((factor, itemIndex) =>
-        itemIndex === index ? { ...factor, [field]: value } : factor,
+        itemIndex === index
+          ? {
+              ...factor,
+              [field]: value,
+              ...(field === "factor_type" && value === "categorical"
+                ? { unit: "", low: "", high: "", levels: factor.levels || "THF, Toluene" }
+                : {}),
+              ...(field === "factor_type" && value === "continuous"
+                ? { levels: "", low: factor.low || "0", high: factor.high || "1" }
+                : {}),
+            }
+          : factor,
       ),
     );
   }
@@ -493,7 +588,7 @@ export default function Home() {
           slogan: projectSlogan,
           response_name: responseName,
           goal: projectGoal,
-          factors,
+          factors: factors.map(serializeFactorInput),
         }),
       });
       const design = await apiRequest<DesignRun[]>(
@@ -509,8 +604,11 @@ export default function Home() {
       setProject(createdProject);
       setDesignRuns(design);
       setYields({});
-      setSurfaceXFactor(factorDisplayName(factors[0]));
-      setSurfaceYFactor(factorDisplayName(factors[2] ?? factors[1]));
+      const availableSurfaceFactors = continuousFactors(factors);
+      setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? factors[0]));
+      setSurfaceYFactor(
+        factorDisplayName(availableSurfaceFactors[1] ?? availableSurfaceFactors[0] ?? factors[1]),
+      );
       setStatusText(`Project ${createdProject.id} design generated.`);
       void loadProjects();
     } catch (error) {
@@ -750,15 +848,22 @@ export default function Home() {
       setProjectGoal(detail.project.goal || "");
       const restoredFactors = detail.factors.map((factor) => ({
           idx: factor.idx,
+          factor_type: factor.factor_type,
           name_kr: factor.name_kr,
           name_en: factor.name_en,
           unit: factor.unit,
-          low: String(factor.low),
-          high: String(factor.high),
+          low: factor.low === null ? "" : String(factor.low),
+          high: factor.high === null ? "" : String(factor.high),
+          levels: factor.levels.join(", "),
         }));
       setFactors(restoredFactors);
-      setSurfaceXFactor(factorDisplayName(restoredFactors[0]));
-      setSurfaceYFactor(factorDisplayName(restoredFactors[2] ?? restoredFactors[1]));
+      const availableSurfaceFactors = continuousFactors(restoredFactors);
+      setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? restoredFactors[0]));
+      setSurfaceYFactor(
+        factorDisplayName(
+          availableSurfaceFactors[1] ?? availableSurfaceFactors[0] ?? restoredFactors[1],
+        ),
+      );
       setDesignRuns(detail.design_runs);
       setYields(restoredYields);
       setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
@@ -780,6 +885,12 @@ export default function Home() {
     if (!project) {
       setSurfaceData(null);
       setSurfaceMessage("먼저 프로젝트를 생성하거나 목록에서 불러오세요.");
+      return;
+    }
+
+    if (surfaceFactorOptions.length < 2) {
+      setSurfaceData(null);
+      setSurfaceMessage("Contour plot requires at least two continuous factors.");
       return;
     }
 
@@ -1023,14 +1134,25 @@ export default function Home() {
 
         <div className="factor-grid">
           <span>Factor</span>
+          <span>type</span>
           <span>name_kr</span>
           <span>name_en</span>
           <span>unit</span>
           <span>low</span>
           <span>high</span>
+          <span>levels</span>
           {factors.map((factor, index) => (
             <div className="factor-row" key={factor.idx}>
               <strong>{factorKeys[index]}</strong>
+              <select
+                value={factor.factor_type}
+                onChange={(event) =>
+                  updateFactor(index, "factor_type", event.target.value)
+                }
+              >
+                <option value="continuous">Continuous</option>
+                <option value="categorical">Categorical</option>
+              </select>
               <input
                 value={factor.name_kr}
                 onChange={(event) => updateFactor(index, "name_kr", event.target.value)}
@@ -1044,18 +1166,28 @@ export default function Home() {
               <input
                 value={factor.unit}
                 onChange={(event) => updateFactor(index, "unit", event.target.value)}
+                disabled={factor.factor_type === "categorical"}
               />
               <input
                 className="numeric-input"
                 value={factor.low}
                 onChange={(event) => updateFactor(index, "low", event.target.value)}
-                required
+                disabled={factor.factor_type === "categorical"}
+                required={factor.factor_type === "continuous"}
               />
               <input
                 className="numeric-input"
                 value={factor.high}
                 onChange={(event) => updateFactor(index, "high", event.target.value)}
-                required
+                disabled={factor.factor_type === "categorical"}
+                required={factor.factor_type === "continuous"}
+              />
+              <input
+                value={factor.levels}
+                onChange={(event) => updateFactor(index, "levels", event.target.value)}
+                disabled={factor.factor_type === "continuous"}
+                placeholder="THF, Toluene"
+                required={factor.factor_type === "categorical"}
               />
             </div>
           ))}
@@ -1220,7 +1352,7 @@ export default function Home() {
                     <strong>{effect.display_name}</strong>
                     <div>
                       <b>Impact {formatImpact(effect)}</b>
-                      <em>{effect.direction} 유리</em>
+                      <em>{effect.direction_label || `${effect.direction} 유리`}</em>
                       <small>Signed effect: {formatEffect(effect.effect)}</small>
                     </div>
                   </article>
@@ -1311,7 +1443,7 @@ export default function Home() {
                       {Object.entries(recommendation.conditions).map(([key, condition]) => (
                         <span key={key}>
                           <b>{key}</b>
-                          <em>{condition.direction}</em>
+                          <em>{condition.direction_label || condition.direction}</em>
                           <strong>{formatConditionValue(condition)}</strong>
                         </span>
                       ))}
@@ -1479,7 +1611,12 @@ export default function Home() {
             <button
               type="button"
               onClick={handleLoadSurface}
-              disabled={!project || isBusy || surfaceXFactor === surfaceYFactor}
+              disabled={
+                !project ||
+                isBusy ||
+                surfaceFactorOptions.length < 2 ||
+                surfaceXFactor === surfaceYFactor
+              }
             >
               <RefreshCw size={16} />
               Update Surface
@@ -1497,7 +1634,7 @@ export default function Home() {
                   setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
                 }}
               >
-                {factors.map((factor) => (
+                {surfaceFactorOptions.map((factor) => (
                   <option key={factor.idx} value={factorDisplayName(factor)}>
                     {factorDisplayName(factor)}
                   </option>
@@ -1514,7 +1651,7 @@ export default function Home() {
                   setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
                 }}
               >
-                {factors.map((factor) => (
+                {surfaceFactorOptions.map((factor) => (
                   <option key={factor.idx} value={factorDisplayName(factor)}>
                     {factorDisplayName(factor)}
                   </option>

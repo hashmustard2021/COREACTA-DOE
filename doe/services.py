@@ -17,6 +17,20 @@ BASE_LEVELS = [
 ]
 
 
+def validate_design_factors(factors):
+    for factor in factors:
+        if factor.is_continuous:
+            if factor.low is None or factor.high is None:
+                raise ValueError(f"{factor.display_name} requires low and high values.")
+            continue
+
+        levels = categorical_levels(factor)
+        if len(levels) != 2:
+            raise ValueError(
+                f"{factor.display_name} is categorical. Coreacta DOE v2 supports exactly 2 levels."
+            )
+
+
 def create_fractional_factorial_design(
     project,
     include_center_points=False,
@@ -25,6 +39,7 @@ def create_fractional_factorial_design(
     factors = list(project.factors.order_by("idx"))
     if not factors:
         raise ValueError("At least one factor is required.")
+    validate_design_factors(factors)
 
     project.design_runs.all().delete()
     runs = []
@@ -38,7 +53,9 @@ def create_fractional_factorial_design(
         for factor in factors:
             level = base[factor.key]
             levels[factor.key] = level
-            values[factor.key] = str(pick_value(factor, "HIGH" if level == 1 else "LOW"))
+            values[factor.key] = serialize_factor_value(
+                pick_value(factor, "HIGH" if level == 1 else "LOW")
+            )
 
         runs.append(
             DesignRun.objects.create(
@@ -53,7 +70,10 @@ def create_fractional_factorial_design(
     if include_center_points:
         for _ in range(center_point_replicates):
             levels = {factor.key: 0 for factor in factors}
-            values = {factor.key: str(factor.mid) for factor in factors}
+            values = {
+                factor.key: serialize_factor_value(pick_value(factor, "NEUTRAL"))
+                for factor in factors
+            }
             runs.append(
                 DesignRun.objects.create(
                     project=project,
@@ -123,6 +143,7 @@ def build_pareto(effects):
             "effect": effect["effect"],
             "effect_abs": effect["effect_abs"],
             "direction": effect["direction"],
+            "direction_label": effect["direction_label"],
         }
         for effect in sorted(
             [effect for effect in effects if effect["effect_abs"] is not None],
@@ -318,23 +339,53 @@ def calculate_main_effects(project, factors):
             {
                 "factor_idx": factor.idx,
                 "factor_key": factor.key,
+                "factor_type": factor.factor_type,
                 "display_name": factor.display_name,
                 "effect": effect,
                 "effect_abs": abs(effect) if effect is not None else None,
                 "direction": direction,
-                "interpretation": effect_interpretation(direction),
+                "direction_label": factor_direction_label(factor, direction),
+                "interpretation": effect_interpretation(factor, direction),
             }
         )
 
     return effects
 
 
-def effect_interpretation(direction):
+def effect_interpretation(factor, direction):
+    if factor.is_categorical:
+        if direction in {"HIGH", "LOW"}:
+            return f"{factor_direction_value(factor, direction)} level is expected to increase the response."
+        return "No clear preferred level."
     if direction == "HIGH":
         return "HIGH level is expected to increase the response."
     if direction == "LOW":
         return "LOW level is expected to increase the response."
     return "No clear preferred level."
+
+
+def factor_direction_label(factor, direction):
+    if not factor.is_categorical:
+        return direction_label_kr(direction)
+
+    levels = categorical_levels(factor)
+    if len(levels) < 2 or direction == "NEUTRAL":
+        return "No clear preferred level."
+    preferred = levels[1] if direction == "HIGH" else levels[0]
+    baseline = levels[0] if direction == "HIGH" else levels[1]
+    return f"{preferred}이 {baseline}보다 유리"
+
+
+def factor_direction_value(factor, direction):
+    if factor.is_categorical:
+        levels = categorical_levels(factor)
+        if len(levels) >= 2:
+            if direction == "HIGH":
+                return levels[1]
+            if direction == "LOW":
+                return levels[0]
+        return "NEUTRAL"
+    return direction
 
 
 def build_interpretation(effects, top_drivers, recommendations, has_enough_data):
@@ -401,8 +452,9 @@ def summarize_conditions(conditions):
         value = condition["value"]
         unit = condition.get("unit", "")
         unit_suffix = f" {unit}" if unit else ""
+        direction_text = condition.get("direction_label") or condition["direction"]
         parts.append(
-            f"{condition['display_name']} {condition['direction']}({value}{unit_suffix})"
+            f"{condition['display_name']} {direction_text}({value}{unit_suffix})"
         )
     return ", ".join(parts)
 
@@ -450,6 +502,7 @@ def recommend_rule_based_next_runs(factors, top_drivers):
                 "factor_idx": factor.idx,
                 "display_name": factor.display_name,
                 "direction": direction,
+                "direction_label": factor_direction_label(factor, direction),
                 **condition_factor_payload(factor, pick_value(factor, direction)),
             }
 
@@ -474,7 +527,11 @@ def recommend_model_based_next_runs(project, factors):
     completed_conditions = completed_condition_keys(project, factors)
 
     candidates = []
-    for levels in product(("LOW", "NEUTRAL", "HIGH"), repeat=len(factors)):
+    factor_direction_sets = [
+        ("LOW", "NEUTRAL", "HIGH") if factor.is_continuous else ("LOW", "HIGH")
+        for factor in factors
+    ]
+    for levels in product(*factor_direction_sets):
         conditions = {}
         coded_values = {}
         values = []
@@ -485,6 +542,7 @@ def recommend_model_based_next_runs(project, factors):
                 "factor_idx": factor.idx,
                 "display_name": factor.display_name,
                 "direction": direction,
+                "direction_label": factor_direction_label(factor, direction),
                 **condition_factor_payload(factor, value),
             }
             coded_values[factor.key] = float(code_value(factor, value))
@@ -527,7 +585,7 @@ def model_observations(project, factors):
                     factor,
                     "HIGH" if run.levels.get(factor.key) == 1 else "LOW",
                 )
-            coded_values[factor.key] = float(code_value(factor, Decimal(str(raw_value))))
+            coded_values[factor.key] = float(code_value(factor, raw_value))
 
         yield {
             "coded_values": coded_values,
@@ -615,14 +673,20 @@ def completed_condition_keys(project, factors):
             value = run.values.get(factor.key)
             if value is None:
                 continue
-            values.append(Decimal(str(value)))
+            values.append(value)
         if len(values) == len(factors):
             keys.add(condition_key(values))
     return keys
 
 
 def condition_key(values):
-    return tuple(Decimal(str(value)).normalize() for value in values)
+    key = []
+    for value in values:
+        try:
+            key.append(str(Decimal(str(value)).normalize()))
+        except ArithmeticError:
+            key.append(str(value).strip())
+    return tuple(key)
 
 
 def midpoint_recommendation(factors):
@@ -632,7 +696,8 @@ def midpoint_recommendation(factors):
             "factor_idx": factor.idx,
             "display_name": factor.display_name,
             "direction": "NEUTRAL",
-            **condition_factor_payload(factor, factor.mid),
+            "direction_label": factor_direction_label(factor, "NEUTRAL"),
+            **condition_factor_payload(factor, pick_value(factor, "NEUTRAL")),
         }
 
     return {
@@ -652,6 +717,16 @@ def opposite_direction(direction):
 
 
 def pick_value(factor, direction):
+    if factor.is_categorical:
+        levels = categorical_levels(factor)
+        if not levels:
+            return ""
+        if direction == "HIGH" and len(levels) >= 2:
+            return levels[1]
+        if direction == "LOW":
+            return levels[0]
+        return levels[0]
+
     if direction == "HIGH":
         return bounded_value(factor, factor.high)
     if direction == "LOW":
@@ -660,16 +735,45 @@ def pick_value(factor, direction):
 
 
 def bounded_value(factor, value):
+    if factor.is_categorical:
+        return str(value)
+    if value is None:
+        return None
     return min(max(value, factor.low), factor.high)
 
 
 def condition_factor_payload(factor, value):
+    if factor.is_categorical:
+        levels = categorical_levels(factor)
+        return {
+            "factor_type": factor.factor_type,
+            "value": str(value),
+            "unit": "",
+            "low": None,
+            "high": None,
+            "levels": levels,
+        }
+
     return {
+        "factor_type": factor.factor_type,
         "value": bounded_value(factor, value),
         "unit": factor.unit,
         "low": factor.low,
         "high": factor.high,
+        "levels": [],
     }
+
+
+def categorical_levels(factor):
+    if not factor.levels:
+        return []
+    return [str(level).strip() for level in factor.levels if str(level).strip()]
+
+
+def serialize_factor_value(value):
+    if isinstance(value, Decimal):
+        return str(value)
+    return str(value)
 
 
 def clamp_yield(value):
@@ -697,6 +801,8 @@ def build_response_surface(project, x_factor_name, y_factor_name, grid_size=11):
         raise ValueError("Selected factor was not found.")
     if x_factor.id == y_factor.id:
         raise ValueError("Choose two different factors.")
+    if not x_factor.is_continuous or not y_factor.is_continuous:
+        raise ValueError("Contour plot supports continuous factors only.")
 
     observations = []
     for run in project.design_runs.select_related("result").order_by("run_order"):
@@ -776,6 +882,18 @@ def grid_values(low, high, grid_size):
 
 
 def code_value(factor, value):
+    if factor.is_categorical:
+        levels = categorical_levels(factor)
+        if len(levels) < 2:
+            return Decimal("0")
+        normalized = str(value).strip()
+        if normalized == levels[0]:
+            return Decimal("-1")
+        if normalized == levels[1]:
+            return Decimal("1")
+        return Decimal("0")
+
+    value = Decimal(str(value))
     midpoint = factor.mid
     half_range = (factor.high - factor.low) / Decimal("2")
     if half_range == 0:

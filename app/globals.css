@@ -324,7 +324,7 @@ select:focus {
 
 .factor-grid {
   display: grid;
-  grid-template-columns: 74px repeat(5, minmax(112px, 1fr));
+  grid-template-columns: 64px 132px repeat(3, minmax(112px, 1fr)) repeat(2, minmax(92px, 0.7fr)) minmax(150px, 1fr);
   gap: 8px;
   overflow-x: auto;
 }

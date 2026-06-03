@@ -6,7 +6,17 @@ from .models import DesignRun, Factor, Project, Result
 class FactorInline(admin.TabularInline):
     model = Factor
     extra = 0
-    fields = ("idx", "name_kr", "name_en", "unit", "low", "high", "display_name")
+    fields = (
+        "idx",
+        "factor_type",
+        "name_kr",
+        "name_en",
+        "unit",
+        "low",
+        "high",
+        "levels",
+        "display_name",
+    )
     readonly_fields = ("display_name",)
     ordering = ("idx",)
 
@@ -45,9 +55,26 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(Factor)
 class FactorAdmin(admin.ModelAdmin):
-    list_display = ("id", "project", "owner", "idx", "display_name", "unit", "low", "high")
-    list_filter = ("project__owner", "project", "idx", "unit")
-    search_fields = ("project__name", "project__owner__username", "name_kr", "name_en", "unit")
+    list_display = (
+        "id",
+        "project",
+        "owner",
+        "idx",
+        "factor_type",
+        "display_name",
+        "unit",
+        "low",
+        "high",
+    )
+    list_filter = ("factor_type", "project__owner", "project", "idx", "unit")
+    search_fields = (
+        "project__name",
+        "project__owner__username",
+        "name_kr",
+        "name_en",
+        "unit",
+        "levels",
+    )
     ordering = ("project", "idx")
 
     @admin.display(description="Owner")
