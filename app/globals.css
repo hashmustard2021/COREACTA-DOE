@@ -69,6 +69,12 @@ button:disabled {
   color: var(--accent-strong);
 }
 
+.danger-button {
+  border-color: #f2b8ae;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 input {
   width: 100%;
   min-height: 38px;
@@ -289,6 +295,13 @@ select:focus {
 
 .project-name {
   max-width: 520px;
+  margin-bottom: 16px;
+}
+
+.project-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.45fr) minmax(0, 1fr);
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -752,6 +765,7 @@ tbody tr:last-child td {
   .condition-grid,
   .graph-section,
   .project-list,
+  .project-meta-grid,
   .stats-grid,
   .surface-controls {
     grid-template-columns: 1fr;

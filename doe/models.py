@@ -13,6 +13,13 @@ class Project(models.Model):
     )
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
+    slogan = models.CharField(
+        max_length=160,
+        blank=True,
+        default="감이 아니라 근거로 실험하세요.",
+    )
+    response_name = models.CharField(max_length=80, blank=True, default="Yield")
+    goal = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

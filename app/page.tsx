@@ -8,7 +8,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { Download, FileText, FlaskConical, Play, RefreshCw, Send } from "lucide-react";
+import {
+  Download,
+  FileText,
+  FlaskConical,
+  Play,
+  RefreshCw,
+  Save,
+  Send,
+  Trash2,
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -50,6 +59,10 @@ type FactorInput = {
 type Project = {
   id: number;
   name: string;
+  description?: string;
+  slogan: string;
+  response_name: string;
+  goal: string;
   factors: Array<FactorInput & { id: number; display_name: string }>;
 };
 
@@ -301,6 +314,9 @@ export default function Home() {
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
+  const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
+  const [responseName, setResponseName] = useState("Yield");
+  const [projectGoal, setProjectGoal] = useState("");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -424,6 +440,11 @@ export default function Home() {
       await apiRequest<Record<string, never>>("/api/auth/logout/", { method: "POST" });
       setCurrentUser(null);
       setProject(null);
+      setProjectName("Suzuki coupling optimization");
+      setProjectSlogan("감이 아니라 근거로 실험하세요.");
+      setResponseName("Yield");
+      setProjectGoal("");
+      setFactors(defaultFactors);
       setDesignRuns([]);
       setYields({});
       setReport(null);
@@ -469,6 +490,9 @@ export default function Home() {
         body: JSON.stringify({
           name: projectName,
           description: "",
+          slogan: projectSlogan,
+          response_name: responseName,
+          goal: projectGoal,
           factors,
         }),
       });
@@ -491,6 +515,69 @@ export default function Home() {
       void loadProjects();
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to generate design.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleUpdateProject() {
+    if (!project) return;
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const updatedProject = await apiRequest<Project>(`/api/projects/${project.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: projectName,
+          slogan: projectSlogan,
+          response_name: responseName,
+          goal: projectGoal,
+        }),
+      });
+
+      setProject(updatedProject);
+      setStatusText(`Project ${updatedProject.id} updated.`);
+      void loadProjects();
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to update project.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!project) return;
+    const shouldDelete = window.confirm(
+      `Delete project "${project.name}"? This will also delete factors, design runs, and results.`,
+    );
+    if (!shouldDelete) return;
+
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      await apiRequest<{ project_id: number; deleted: boolean }>(
+        `/api/projects/${project.id}/`,
+        { method: "DELETE" },
+      );
+      setProject(null);
+      setProjectName("Suzuki coupling optimization");
+      setProjectSlogan("감이 아니라 근거로 실험하세요.");
+      setResponseName("Yield");
+      setProjectGoal("");
+      setFactors(defaultFactors);
+      setDesignRuns([]);
+      setYields({});
+      setReport(null);
+      setSurfaceData(null);
+      setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+      setStatusText("Project deleted.");
+      await loadProjects();
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to delete project.");
     } finally {
       setIsBusy(false);
     }
@@ -658,6 +745,9 @@ export default function Home() {
 
       setProject(detail.project);
       setProjectName(detail.project.name);
+      setProjectSlogan(detail.project.slogan || "감이 아니라 근거로 실험하세요.");
+      setResponseName(detail.project.response_name || "Yield");
+      setProjectGoal(detail.project.goal || "");
       const restoredFactors = detail.factors.map((factor) => ({
           idx: factor.idx,
           name_kr: factor.name_kr,
@@ -856,10 +946,34 @@ export default function Home() {
             <span>Project Setup</span>
             <h2>Reaction and factors</h2>
           </div>
-          <button type="submit" disabled={isBusy}>
-            <Play size={16} />
-            {isBusy ? "Working..." : "Generate Design"}
-          </button>
+          <div className="button-group">
+            {project && (
+              <>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void handleUpdateProject()}
+                  disabled={isBusy}
+                >
+                  <Save size={16} />
+                  Save Project
+                </button>
+                <button
+                  className="danger-button"
+                  type="button"
+                  onClick={() => void handleDeleteProject()}
+                  disabled={isBusy}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </>
+            )}
+            <button type="submit" disabled={isBusy}>
+              <Play size={16} />
+              {isBusy ? "Working..." : "Generate Design"}
+            </button>
+          </div>
         </div>
 
         <label className="field project-name">
@@ -870,6 +984,33 @@ export default function Home() {
             required
           />
         </label>
+
+        <div className="project-meta-grid">
+          <label className="field">
+            <span>Slogan</span>
+            <input
+              value={projectSlogan}
+              onChange={(event) => setProjectSlogan(event.target.value)}
+              placeholder="감이 아니라 근거로 실험하세요."
+            />
+          </label>
+          <label className="field">
+            <span>Response name</span>
+            <input
+              value={responseName}
+              onChange={(event) => setResponseName(event.target.value)}
+              placeholder="Yield"
+            />
+          </label>
+          <label className="field">
+            <span>Goal</span>
+            <input
+              value={projectGoal}
+              onChange={(event) => setProjectGoal(event.target.value)}
+              placeholder="Maximize yield"
+            />
+          </label>
+        </div>
 
         <label className="center-option">
           <input

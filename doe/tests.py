@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
+from .models import DesignRun, Factor, Project, Result
+
 
 class SuzukiCouplingDoeApiTests(APITestCase):
     project_payload = {
@@ -80,6 +82,76 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(list_response.data["data"], [])
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(design_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_owner_can_update_project(self):
+        project = self.create_project()
+
+        response = self.client.patch(
+            f"/api/projects/{project['id']}/",
+            {
+                "name": "Updated Suzuki optimization",
+                "slogan": "Evidence first.",
+                "response_name": "Conversion",
+                "goal": "Maximize reaction conversion.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        updated = response.data["data"]
+        self.assertEqual(updated["name"], "Updated Suzuki optimization")
+        self.assertEqual(updated["slogan"], "Evidence first.")
+        self.assertEqual(updated["response_name"], "Conversion")
+        self.assertEqual(updated["goal"], "Maximize reaction conversion.")
+
+    def test_owner_can_delete_project_and_related_records(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        response = self.client.delete(f"/api/projects/{project['id']}/")
+        list_response = self.client.get("/api/projects/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertTrue(response.data["data"]["deleted"])
+        self.assertFalse(Project.objects.filter(id=project["id"]).exists())
+        self.assertEqual(Factor.objects.count(), 0)
+        self.assertEqual(DesignRun.objects.count(), 0)
+        self.assertEqual(Result.objects.count(), 0)
+        self.assertEqual(list_response.data["data"], [])
+
+    def test_other_user_cannot_update_or_delete_project(self):
+        project = self.create_project()
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other_user)
+
+        patch_response = other_client.patch(
+            f"/api/projects/{project['id']}/",
+            {"name": "Not allowed"},
+            format="json",
+        )
+        delete_response = other_client.delete(f"/api/projects/{project['id']}/")
+
+        self.assertEqual(patch_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(delete_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Project.objects.filter(id=project["id"]).exists())
+
+    def test_anonymous_user_cannot_update_or_delete_project(self):
+        project = self.create_project()
+        anonymous_client = APIClient()
+
+        patch_response = anonymous_client.patch(
+            f"/api/projects/{project['id']}/",
+            {"name": "Anonymous update"},
+            format="json",
+        )
+        delete_response = anonymous_client.delete(f"/api/projects/{project['id']}/")
+
+        self.assertEqual(patch_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(delete_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(Project.objects.filter(id=project["id"]).exists())
 
     def test_login_logout_and_me_api(self):
         session_client = APIClient(enforce_csrf_checks=True)

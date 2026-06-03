@@ -18,6 +18,7 @@ from .serializers import (
     LoginSerializer,
     ProjectListSerializer,
     ProjectSerializer,
+    ProjectUpdateSerializer,
     ResultSerializer,
     ResultUpsertSerializer,
 )
@@ -79,7 +80,7 @@ def projects(request):
     return api_success(ProjectSerializer(project).data, status_code=status.HTTP_201_CREATED)
 
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH", "DELETE"])
 def project_detail(request, project_id):
     auth_response = require_authenticated(request)
     if auth_response:
@@ -89,6 +90,19 @@ def project_detail(request, project_id):
         project = get_project(request, project_id)
     except Http404 as exc:
         return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "PATCH":
+        serializer = ProjectUpdateSerializer(project, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return api_error(format_validation_errors(serializer.errors))
+
+        serializer.save()
+        return api_success(ProjectSerializer(project).data)
+
+    if request.method == "DELETE":
+        deleted_project_id = project.id
+        project.delete()
+        return api_success({"project_id": deleted_project_id, "deleted": True})
 
     design_runs = project.design_runs.select_related("result").order_by("run_order")
     results = ResultSerializer(

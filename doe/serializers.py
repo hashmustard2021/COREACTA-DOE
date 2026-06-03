@@ -25,7 +25,18 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["id", "owner", "name", "description", "factors", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "owner",
+            "name",
+            "description",
+            "slogan",
+            "response_name",
+            "goal",
+            "factors",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["owner", "created_at", "updated_at"]
 
     def validate_factors(self, factors):
@@ -50,6 +61,12 @@ class ProjectSerializer(serializers.ModelSerializer):
         for factor_data in factors_data:
             Factor.objects.create(project=project, **factor_data)
         return project
+
+
+class ProjectUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ["name", "slogan", "response_name", "goal"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
@@ -77,7 +94,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return obj.design_runs.count() or 8
 
     def get_response_name(self, obj):
-        return "Yield"
+        return obj.response_name or "Yield"
 
     def get_factor_count(self, obj):
         return obj.factors.count()
