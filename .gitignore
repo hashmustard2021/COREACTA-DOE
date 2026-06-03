@@ -13,6 +13,7 @@ dev-server.log
 dev-server.err.log
 next-dev.log
 next-dev.*.log
+django-dev.log
 django-dev.*.log
 
 __pycache__/
