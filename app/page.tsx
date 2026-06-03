@@ -381,9 +381,33 @@ function continuousFactors(factors: FactorInput[]) {
 function defaultContinuousFields(idx: number) {
   const fallback = defaultFactors.find((factor) => factor.idx === idx);
   return {
+    name_kr: fallback?.name_kr || "",
+    name_en: fallback?.name_en || "",
     unit: fallback?.unit || "",
     low: fallback?.low || "0",
     high: fallback?.high || "1",
+  };
+}
+
+function defaultCategoricalFields(idx: number) {
+  if (idx === 3) {
+    return {
+      name_kr: "용매",
+      name_en: "Solvent",
+      levels: "THF, Toluene",
+    };
+  }
+  if (idx === 4) {
+    return {
+      name_kr: "염기",
+      name_en: "Base",
+      levels: "K2CO3, Cs2CO3",
+    };
+  }
+  return {
+    name_kr: "",
+    name_en: "",
+    levels: "",
   };
 }
 
@@ -600,10 +624,10 @@ export default function Home() {
           return {
             ...factor,
             factor_type: "categorical",
+            ...defaultCategoricalFields(factor.idx),
             unit: "",
             low: "",
             high: "",
-            levels: factor.levels || "THF, Toluene",
           };
         }
         if (field === "factor_type" && value === "continuous") {
