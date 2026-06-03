@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -106,6 +107,23 @@ class SuzukiCouplingDoeApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertFalse(response.data["success"])
+
+    @override_settings(DEBUG=True)
+    def test_local_dev_cors_allows_project_patch_and_delete(self):
+        response = self.client.options(
+            "/api/projects/1/",
+            HTTP_ORIGIN="http://localhost:3000",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="PATCH",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="Content-Type,X-CSRFToken",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("PATCH", response["Access-Control-Allow-Methods"])
+        self.assertIn("DELETE", response["Access-Control-Allow-Methods"])
+        self.assertEqual(
+            response["Access-Control-Allow-Origin"],
+            "http://localhost:3000",
+        )
 
     def test_user_cannot_access_other_users_projects(self):
         project = self.create_project()
