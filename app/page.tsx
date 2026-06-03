@@ -344,8 +344,51 @@ function serializeFactorInput(factor: FactorInput) {
   };
 }
 
+function validateFactorsForSubmit(factors: FactorInput[]) {
+  for (const factor of factors) {
+    const label = `${factor.name_kr || factor.name_en || `Factor ${factor.idx}`}`;
+    if (factor.factor_type === "continuous") {
+      const low = Number(factor.low);
+      const high = Number(factor.high);
+      if (!factor.unit.trim() || !factor.low.trim() || !factor.high.trim()) {
+        return `${label}: continuous factor는 unit, low, high가 모두 필요합니다.`;
+      }
+      if (!Number.isFinite(low) || !Number.isFinite(high)) {
+        return `${label}: low/high는 숫자여야 합니다.`;
+      }
+      if (low >= high) {
+        return `${label}: low는 high보다 작아야 합니다.`;
+      }
+      continue;
+    }
+
+    const levels = parseFactorLevels(factor.levels);
+    if (levels.length < 2) {
+      return `${label}: categorical factor는 levels가 최소 2개 필요합니다.`;
+    }
+    if (levels.length > 2) {
+      return "현재 v2 MVP에서는 categorical factor는 2-level만 지원합니다.";
+    }
+  }
+
+  return "";
+}
+
 function continuousFactors(factors: FactorInput[]) {
   return factors.filter((factor) => factor.factor_type === "continuous");
+}
+
+function defaultContinuousFields(idx: number) {
+  const fallback = defaultFactors.find((factor) => factor.idx === idx);
+  return {
+    unit: fallback?.unit || "",
+    low: fallback?.low || "0",
+    high: fallback?.high || "1",
+  };
+}
+
+function normalizeGoal(goal?: string): "maximize" | "minimize" {
+  return goal === "minimize" ? "minimize" : "maximize";
 }
 
 function heatColor(value: number, min: number, max: number) {
@@ -382,7 +425,7 @@ export default function Home() {
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
   const [responseName, setResponseName] = useState("Yield");
-  const [projectGoal, setProjectGoal] = useState("");
+  const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -407,6 +450,7 @@ export default function Home() {
     [factors],
   );
   const surfaceFactorOptions = useMemo(() => continuousFactors(factors), [factors]);
+  const hasContinuousFactor = surfaceFactorOptions.length > 0;
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -460,6 +504,12 @@ export default function Home() {
   useEffect(() => {
     void initializeAuth();
   }, []);
+
+  useEffect(() => {
+    if (!hasContinuousFactor && includeCenterPoints) {
+      setIncludeCenterPoints(false);
+    }
+  }, [hasContinuousFactor, includeCenterPoints]);
 
   useEffect(() => {
     if (surfaceFactorOptions.length === 0) {
@@ -527,7 +577,7 @@ export default function Home() {
       setProjectName("Suzuki coupling optimization");
       setProjectSlogan("감이 아니라 근거로 실험하세요.");
       setResponseName("Yield");
-      setProjectGoal("");
+      setProjectGoal("maximize");
       setFactors(defaultFactors);
       setDesignRuns([]);
       setYields({});
@@ -544,20 +594,28 @@ export default function Home() {
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
     setFactors((current) =>
-      current.map((factor, itemIndex) =>
-        itemIndex === index
-          ? {
-              ...factor,
-              [field]: value,
-              ...(field === "factor_type" && value === "categorical"
-                ? { unit: "", low: "", high: "", levels: factor.levels || "THF, Toluene" }
-                : {}),
-              ...(field === "factor_type" && value === "continuous"
-                ? { levels: "", low: factor.low || "0", high: factor.high || "1" }
-                : {}),
-            }
-          : factor,
-      ),
+      current.map((factor, itemIndex) => {
+        if (itemIndex !== index) return factor;
+        if (field === "factor_type" && value === "categorical") {
+          return {
+            ...factor,
+            factor_type: "categorical",
+            unit: "",
+            low: "",
+            high: "",
+            levels: factor.levels || "THF, Toluene",
+          };
+        }
+        if (field === "factor_type" && value === "continuous") {
+          return {
+            ...factor,
+            factor_type: "continuous",
+            ...defaultContinuousFields(factor.idx),
+            levels: "",
+          };
+        }
+        return { ...factor, [field]: value };
+      }),
     );
   }
 
@@ -572,6 +630,13 @@ export default function Home() {
 
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const validationMessage = validateFactorsForSubmit(factors);
+    if (validationMessage) {
+      setErrorText(validationMessage);
+      setStatusText("");
+      return;
+    }
+
     setIsBusy(true);
     setErrorText("");
     setStatusText("");
@@ -596,7 +661,7 @@ export default function Home() {
         {
           method: "POST",
           body: JSON.stringify({
-            include_center_points: includeCenterPoints,
+            include_center_points: includeCenterPoints && hasContinuousFactor,
           }),
         },
       );
@@ -665,7 +730,7 @@ export default function Home() {
       setProjectName("Suzuki coupling optimization");
       setProjectSlogan("감이 아니라 근거로 실험하세요.");
       setResponseName("Yield");
-      setProjectGoal("");
+      setProjectGoal("maximize");
       setFactors(defaultFactors);
       setDesignRuns([]);
       setYields({});
@@ -845,7 +910,7 @@ export default function Home() {
       setProjectName(detail.project.name);
       setProjectSlogan(detail.project.slogan || "감이 아니라 근거로 실험하세요.");
       setResponseName(detail.project.response_name || "Yield");
-      setProjectGoal(detail.project.goal || "");
+      setProjectGoal(normalizeGoal(detail.project.goal));
       const restoredFactors = detail.factors.map((factor) => ({
           idx: factor.idx,
           factor_type: factor.factor_type,
@@ -1115,19 +1180,22 @@ export default function Home() {
           </label>
           <label className="field">
             <span>Goal</span>
-            <input
+            <select
               value={projectGoal}
-              onChange={(event) => setProjectGoal(event.target.value)}
-              placeholder="Maximize yield"
-            />
+              onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}
+            >
+              <option value="maximize">maximize</option>
+              <option value="minimize">minimize</option>
+            </select>
           </label>
         </div>
 
         <label className="center-option">
           <input
             type="checkbox"
-            checked={includeCenterPoints}
+            checked={includeCenterPoints && hasContinuousFactor}
             onChange={(event) => setIncludeCenterPoints(event.target.checked)}
+            disabled={!hasContinuousFactor}
           />
           <span>Center point 3회 추가</span>
         </label>
@@ -1163,32 +1231,40 @@ export default function Home() {
                 onChange={(event) => updateFactor(index, "name_en", event.target.value)}
                 required
               />
-              <input
-                value={factor.unit}
-                onChange={(event) => updateFactor(index, "unit", event.target.value)}
-                disabled={factor.factor_type === "categorical"}
-              />
-              <input
-                className="numeric-input"
-                value={factor.low}
-                onChange={(event) => updateFactor(index, "low", event.target.value)}
-                disabled={factor.factor_type === "categorical"}
-                required={factor.factor_type === "continuous"}
-              />
-              <input
-                className="numeric-input"
-                value={factor.high}
-                onChange={(event) => updateFactor(index, "high", event.target.value)}
-                disabled={factor.factor_type === "categorical"}
-                required={factor.factor_type === "continuous"}
-              />
-              <input
-                value={factor.levels}
-                onChange={(event) => updateFactor(index, "levels", event.target.value)}
-                disabled={factor.factor_type === "continuous"}
-                placeholder="THF, Toluene"
-                required={factor.factor_type === "categorical"}
-              />
+              {factor.factor_type === "continuous" ? (
+                <>
+                  <input
+                    value={factor.unit}
+                    onChange={(event) => updateFactor(index, "unit", event.target.value)}
+                    required
+                  />
+                  <input
+                    className="numeric-input"
+                    value={factor.low}
+                    onChange={(event) => updateFactor(index, "low", event.target.value)}
+                    required
+                  />
+                  <input
+                    className="numeric-input"
+                    value={factor.high}
+                    onChange={(event) => updateFactor(index, "high", event.target.value)}
+                    required
+                  />
+                  <span className="factor-placeholder">-</span>
+                </>
+              ) : (
+                <>
+                  <span className="factor-placeholder">-</span>
+                  <span className="factor-placeholder">-</span>
+                  <span className="factor-placeholder">-</span>
+                  <input
+                    value={factor.levels}
+                    onChange={(event) => updateFactor(index, "levels", event.target.value)}
+                    placeholder="THF, Toluene"
+                    required
+                  />
+                </>
+              )}
             </div>
           ))}
         </div>

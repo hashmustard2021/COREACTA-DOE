@@ -102,6 +102,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             )
         return factors
 
+    def validate_goal(self, value):
+        if value in {"", "maximize", "minimize"}:
+            return value or "maximize"
+        raise serializers.ValidationError("goal must be maximize or minimize.")
+
     def create(self, validated_data):
         factors_data = validated_data.pop("factors")
         owner = self.context["request"].user
@@ -115,6 +120,11 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ["name", "slogan", "response_name", "goal"]
+
+    def validate_goal(self, value):
+        if value in {"", "maximize", "minimize"}:
+            return value or "maximize"
+        raise serializers.ValidationError("goal must be maximize or minimize.")
 
 
 class ProjectListSerializer(serializers.ModelSerializer):

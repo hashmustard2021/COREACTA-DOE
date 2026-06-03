@@ -148,7 +148,7 @@ class SuzukiCouplingDoeApiTests(APITestCase):
                 "name": "Updated Suzuki optimization",
                 "slogan": "Evidence first.",
                 "response_name": "Conversion",
-                "goal": "Maximize reaction conversion.",
+                "goal": "minimize",
             },
             format="json",
         )
@@ -159,7 +159,7 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(updated["name"], "Updated Suzuki optimization")
         self.assertEqual(updated["slogan"], "Evidence first.")
         self.assertEqual(updated["response_name"], "Conversion")
-        self.assertEqual(updated["goal"], "Maximize reaction conversion.")
+        self.assertEqual(updated["goal"], "minimize")
 
     def test_owner_can_delete_project_and_related_records(self):
         project = self.create_project()

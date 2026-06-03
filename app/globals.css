@@ -357,6 +357,17 @@ select:focus {
   min-height: 38px;
 }
 
+.factor-placeholder {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafb;
+  color: var(--muted);
+  padding: 8px 10px;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);

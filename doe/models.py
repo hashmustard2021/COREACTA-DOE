@@ -19,7 +19,7 @@ class Project(models.Model):
         default="감이 아니라 근거로 실험하세요.",
     )
     response_name = models.CharField(max_length=80, blank=True, default="Yield")
-    goal = models.TextField(blank=True, default="")
+    goal = models.TextField(blank=True, default="maximize")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

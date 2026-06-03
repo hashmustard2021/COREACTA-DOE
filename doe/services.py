@@ -71,7 +71,11 @@ def create_fractional_factorial_design(
         for _ in range(center_point_replicates):
             levels = {factor.key: 0 for factor in factors}
             values = {
-                factor.key: serialize_factor_value(pick_value(factor, "NEUTRAL"))
+                factor.key: (
+                    serialize_factor_value(pick_value(factor, "NEUTRAL"))
+                    if factor.is_continuous
+                    else ""
+                )
                 for factor in factors
             }
             runs.append(
