@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import {
+  Copy,
   Download,
   FileText,
   FlaskConical,
@@ -78,6 +79,8 @@ type Project = {
   slogan: string;
   response_name: string;
   goal: string;
+  run_budget: number;
+  include_center_points: boolean;
   factors: ProjectFactor[];
 };
 
@@ -86,9 +89,14 @@ type ProjectListItem = {
   name: string;
   created_at: string;
   run_budget: number;
+  include_center_points: boolean;
   response_name: string;
   factor_count: number;
   result_count: number;
+};
+
+type DuplicateProjectResponse = {
+  project_id: number;
 };
 
 type DesignRun = {
@@ -677,6 +685,8 @@ export default function Home() {
           slogan: projectSlogan,
           response_name: responseName,
           goal: projectGoal,
+          include_center_points: includeCenterPoints && hasContinuousFactor,
+          run_budget: includeCenterPoints && hasContinuousFactor ? 11 : 8,
           factors: factors.map(serializeFactorInput),
         }),
       });
@@ -721,6 +731,8 @@ export default function Home() {
           slogan: projectSlogan,
           response_name: responseName,
           goal: projectGoal,
+          include_center_points: includeCenterPoints && hasContinuousFactor,
+          run_budget: includeCenterPoints && hasContinuousFactor ? 11 : 8,
         }),
       });
 
@@ -729,6 +741,27 @@ export default function Home() {
       void loadProjects();
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to update project.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleDuplicateProject() {
+    if (!project) return;
+    setIsBusy(true);
+    setErrorText("");
+    setStatusText("");
+
+    try {
+      const duplicated = await apiRequest<DuplicateProjectResponse>(
+        `/api/projects/${project.id}/duplicate/`,
+        { method: "POST" },
+      );
+      await loadProjects();
+      await handleLoadProject(duplicated.project_id);
+      setStatusText(`Project ${duplicated.project_id} duplicated.`);
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to duplicate project.");
     } finally {
       setIsBusy(false);
     }
@@ -935,6 +968,7 @@ export default function Home() {
       setProjectSlogan(detail.project.slogan || "감이 아니라 근거로 실험하세요.");
       setResponseName(detail.project.response_name || "Yield");
       setProjectGoal(normalizeGoal(detail.project.goal));
+      setIncludeCenterPoints(Boolean(detail.project.include_center_points));
       const restoredFactors = detail.factors.map((factor) => ({
           idx: factor.idx,
           factor_type: factor.factor_type,
@@ -1157,6 +1191,15 @@ export default function Home() {
                 >
                   <Save size={16} />
                   Save Project
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void handleDuplicateProject()}
+                  disabled={isBusy}
+                >
+                  <Copy size={16} />
+                  Duplicate
                 </button>
                 <button
                   className="danger-button"

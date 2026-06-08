@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Project
+from .models import Factor, Project
 from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
@@ -145,6 +145,47 @@ def create_design(request, project_id):
     return api_success(
         DesignRunSerializer(runs, many=True).data,
         status_code=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+def duplicate_project(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    try:
+        project = get_project(request, project_id)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
+    duplicated = Project.objects.create(
+        owner=request.user,
+        name=f"{project.name} (Copy)",
+        description=project.description,
+        slogan=project.slogan,
+        response_name=project.response_name,
+        goal=project.goal,
+        run_budget=project.run_budget,
+        include_center_points=project.include_center_points,
+    )
+    for factor in project.factors.order_by("idx"):
+        Factor.objects.create(
+            project=duplicated,
+            idx=factor.idx,
+            factor_type=factor.factor_type,
+            name_kr=factor.name_kr,
+            name_en=factor.name_en,
+            unit=factor.unit,
+            low=factor.low,
+            high=factor.high,
+            levels=list(factor.levels or []),
+        )
+
+    return api_success(
+        {"project_id": duplicated.id},
+        status_code=status.HTTP_201_CREATED,
+        message="Project duplicated successfully.",
     )
 
 

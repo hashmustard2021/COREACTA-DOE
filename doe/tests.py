@@ -194,6 +194,78 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Project.objects.filter(id=project["id"]).exists())
 
+    def test_owner_can_duplicate_continuous_project_without_design_or_results(self):
+        project = self.create_project()
+        self.create_design(project["id"], include_center_points=True)
+        self.submit_results(project["id"])
+
+        response = self.client.post(f"/api/projects/{project['id']}/duplicate/")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["message"], "Project duplicated successfully.")
+
+        duplicated = Project.objects.get(id=response.data["data"]["project_id"])
+        original = Project.objects.get(id=project["id"])
+        self.assertEqual(duplicated.owner, self.user)
+        self.assertEqual(duplicated.name, f"{original.name} (Copy)")
+        self.assertEqual(duplicated.slogan, original.slogan)
+        self.assertEqual(duplicated.response_name, original.response_name)
+        self.assertEqual(duplicated.goal, original.goal)
+        self.assertEqual(duplicated.run_budget, 11)
+        self.assertTrue(duplicated.include_center_points)
+        self.assertEqual(duplicated.design_runs.count(), 0)
+        self.assertEqual(Result.objects.filter(design_run__project=duplicated).count(), 0)
+
+        original_factors = list(original.factors.order_by("idx").values(
+            "idx",
+            "factor_type",
+            "name_kr",
+            "name_en",
+            "unit",
+            "low",
+            "high",
+            "levels",
+        ))
+        duplicated_factors = list(duplicated.factors.order_by("idx").values(
+            "idx",
+            "factor_type",
+            "name_kr",
+            "name_en",
+            "unit",
+            "low",
+            "high",
+            "levels",
+        ))
+        self.assertEqual(duplicated_factors, original_factors)
+
+    def test_owner_can_duplicate_mixed_project_factors(self):
+        project = self.create_project(self.mixed_factor_payload)
+        self.create_design(project["id"])
+        self.submit_results(project["id"])
+
+        response = self.client.post(f"/api/projects/{project['id']}/duplicate/")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        duplicated = Project.objects.get(id=response.data["data"]["project_id"])
+        factors = list(duplicated.factors.order_by("idx"))
+        self.assertEqual(duplicated.design_runs.count(), 0)
+        self.assertEqual(factors[2].factor_type, Factor.CATEGORICAL)
+        self.assertEqual(factors[2].levels, ["THF", "Toluene"])
+        self.assertIsNone(factors[2].low)
+        self.assertIsNone(factors[2].high)
+        self.assertEqual(factors[3].levels, ["K2CO3", "Cs2CO3"])
+
+    def test_other_user_cannot_duplicate_project(self):
+        project = self.create_project()
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other_user)
+
+        response = other_client.post(f"/api/projects/{project['id']}/duplicate/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Project.objects.filter(name__endswith="(Copy)").count(), 0)
+
     def test_anonymous_user_cannot_update_or_delete_project(self):
         project = self.create_project()
         anonymous_client = APIClient()

@@ -81,6 +81,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             "slogan",
             "response_name",
             "goal",
+            "run_budget",
+            "include_center_points",
             "factors",
             "created_at",
             "updated_at",
@@ -119,7 +121,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["name", "slogan", "response_name", "goal"]
+        fields = ["name", "slogan", "response_name", "goal", "run_budget", "include_center_points"]
 
     def validate_goal(self, value):
         if value in {"", "maximize", "minimize"}:
@@ -144,12 +146,13 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "created_at",
             "run_budget",
             "response_name",
+            "include_center_points",
             "factor_count",
             "result_count",
         ]
 
     def get_run_budget(self, obj):
-        return obj.design_runs.count() or 8
+        return obj.run_budget or obj.design_runs.count() or 8
 
     def get_response_name(self, obj):
         return obj.response_name or "Yield"

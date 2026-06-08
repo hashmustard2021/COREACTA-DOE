@@ -20,6 +20,8 @@ class Project(models.Model):
     )
     response_name = models.CharField(max_length=80, blank=True, default="Yield")
     goal = models.TextField(blank=True, default="maximize")
+    run_budget = models.PositiveSmallIntegerField(default=8)
+    include_center_points = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

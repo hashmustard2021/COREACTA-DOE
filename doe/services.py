@@ -88,6 +88,10 @@ def create_fractional_factorial_design(
             )
             run_order += 1
 
+    project.include_center_points = bool(include_center_points)
+    project.run_budget = len(runs)
+    project.save(update_fields=["include_center_points", "run_budget", "updated_at"])
+
     return runs
 
 

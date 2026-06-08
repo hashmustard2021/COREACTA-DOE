@@ -12,6 +12,11 @@ urlpatterns = [
     path("projects/<int:project_id>/", views.project_detail, name="project-detail"),
     path("projects/<int:project_id>/design/", views.create_design, name="create-design"),
     path(
+        "projects/<int:project_id>/duplicate/",
+        views.duplicate_project,
+        name="duplicate-project",
+    ),
+    path(
         "projects/<int:project_id>/design.csv/",
         views.download_design_csv,
         name="download-design-csv",
