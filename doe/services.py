@@ -2,7 +2,7 @@ import math
 from decimal import Decimal
 from itertools import combinations, product
 
-from .models import DesignRun, Factor, Result
+from .models import DesignRun, Factor, Result, ResultHistory
 
 
 BASE_LEVELS = [
@@ -95,16 +95,30 @@ def create_fractional_factorial_design(
     return runs
 
 
-def upsert_result(project, run_order, response, note=""):
+def upsert_result(project, run_order, response, note="", changed_by=None):
     try:
         design_run = project.design_runs.get(run_order=run_order)
     except DesignRun.DoesNotExist as exc:
         raise ValueError("Design run does not exist. Create the design first.") from exc
 
+    old_response = None
+    try:
+        old_response = design_run.result.response
+    except Result.DoesNotExist:
+        pass
+
     result, _ = Result.objects.update_or_create(
         design_run=design_run,
         defaults={"response": response, "note": note},
     )
+    if old_response is not None and old_response != response and changed_by is not None:
+        ResultHistory.objects.create(
+            project=project,
+            run=design_run,
+            old_y=old_response,
+            new_y=response,
+            changed_by=changed_by,
+        )
     return result
 
 

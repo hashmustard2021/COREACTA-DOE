@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DesignRun, Factor, Project, Result
+from .models import DesignRun, Factor, Project, Result, ResultHistory
 
 
 class FactorInline(admin.TabularInline):
@@ -118,3 +118,28 @@ class ResultAdmin(admin.ModelAdmin):
     @admin.display(description="Run")
     def run_order(self, obj):
         return obj.design_run.run_order
+
+
+@admin.register(ResultHistory)
+class ResultHistoryAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "project",
+        "owner",
+        "run_order",
+        "old_y",
+        "new_y",
+        "changed_by",
+        "changed_at",
+    )
+    list_filter = ("project__owner", "project", "run__run_order", "changed_by", "changed_at")
+    search_fields = ("project__name", "project__owner__username", "changed_by__username")
+    ordering = ("project", "run__run_order", "-changed_at")
+
+    @admin.display(description="Owner")
+    def owner(self, obj):
+        return obj.project.owner
+
+    @admin.display(description="Run")
+    def run_order(self, obj):
+        return obj.run.run_order

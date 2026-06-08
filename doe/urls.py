@@ -31,6 +31,11 @@ urlpatterns = [
         views.create_or_update_result,
         name="create-or-update-result",
     ),
+    path(
+        "projects/<int:project_id>/result-history/",
+        views.result_history,
+        name="result-history",
+    ),
     path("projects/<int:project_id>/surface/", views.surface, name="surface"),
     path("projects/<int:project_id>/report/", views.report, name="report"),
 ]

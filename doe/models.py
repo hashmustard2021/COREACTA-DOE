@@ -140,3 +140,26 @@ class Result(models.Model):
 
     def __str__(self):
         return f"{self.design_run}: {self.response}"
+
+
+class ResultHistory(models.Model):
+    project = models.ForeignKey(
+        Project, related_name="result_history", on_delete=models.CASCADE
+    )
+    run = models.ForeignKey(
+        DesignRun, related_name="result_history", on_delete=models.CASCADE
+    )
+    old_y = models.DecimalField(max_digits=12, decimal_places=4)
+    new_y = models.DecimalField(max_digits=12, decimal_places=4)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="doe_result_changes",
+        on_delete=models.CASCADE,
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at", "-id"]
+
+    def __str__(self):
+        return f"{self.project} run {self.run.run_order}: {self.old_y} -> {self.new_y}"

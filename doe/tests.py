@@ -5,7 +5,7 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import DesignRun, Factor, Project, Result
+from .models import DesignRun, Factor, Project, Result, ResultHistory
 
 
 class SuzukiCouplingDoeApiTests(APITestCase):
@@ -460,6 +460,49 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         result = response.data["data"]
         self.assertEqual(Decimal(result["response"]), Decimal("42.0000"))
         self.assertEqual(result["run_order"], 1)
+        self.assertEqual(ResultHistory.objects.count(), 0)
+
+    def test_result_update_creates_history(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.client.post(
+            f"/api/projects/{project['id']}/results/",
+            {"run_order": 1, "response": "42"},
+            format="json",
+        )
+
+        response = self.client.post(
+            f"/api/projects/{project['id']}/results/",
+            {"run_order": 1, "response": "55"},
+            format="json",
+        )
+        history_response = self.client.get(f"/api/projects/{project['id']}/result-history/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ResultHistory.objects.count(), 1)
+        history = ResultHistory.objects.get()
+        self.assertEqual(history.project_id, project["id"])
+        self.assertEqual(history.run.run_order, 1)
+        self.assertEqual(history.old_y, Decimal("42.0000"))
+        self.assertEqual(history.new_y, Decimal("55.0000"))
+        self.assertEqual(history.changed_by, self.user)
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(history_response.data["data"]), 1)
+        self.assertEqual(history_response.data["data"][0]["run_order"], 1)
+        self.assertEqual(
+            Decimal(history_response.data["data"][0]["old_y"]),
+            Decimal("42.0000"),
+        )
+
+    def test_other_user_cannot_access_result_history(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other_user)
+
+        response = other_client.get(f"/api/projects/{project['id']}/result-history/")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_report_api_main_effects_and_next_runs(self):
         project = self.create_project()

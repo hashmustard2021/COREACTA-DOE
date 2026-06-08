@@ -429,6 +429,48 @@ tbody tr:last-child td {
   justify-content: flex-end;
 }
 
+.compact-button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.history-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.history-run {
+  display: grid;
+  gap: 8px;
+}
+
+.history-list {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(90px, 0.4fr) minmax(160px, 1fr);
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.history-item strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item time {
+  font-variant-numeric: tabular-nums;
+}
+
 .report-card {
   margin-bottom: 16px;
 }

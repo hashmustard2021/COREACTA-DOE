@@ -19,6 +19,7 @@ from .serializers import (
     ProjectListSerializer,
     ProjectSerializer,
     ProjectUpdateSerializer,
+    ResultHistorySerializer,
     ResultSerializer,
     ResultUpsertSerializer,
 )
@@ -205,7 +206,11 @@ def create_or_update_result(request, project_id):
         return api_error(format_validation_errors(serializer.errors))
 
     try:
-        result = upsert_result(project, **serializer.validated_data)
+        result = upsert_result(
+            project,
+            changed_by=request.user,
+            **serializer.validated_data,
+        )
     except OperationalError:
         return api_error(
             "Database is busy. Please retry.",
@@ -215,6 +220,25 @@ def create_or_update_result(request, project_id):
         return api_error(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
     return api_success(ResultSerializer(result).data)
+
+
+@api_view(["GET"])
+def result_history(request, project_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    try:
+        project = get_project(request, project_id)
+    except Http404 as exc:
+        return api_error(str(exc), status_code=status.HTTP_404_NOT_FOUND)
+
+    history = project.result_history.select_related("run", "changed_by").order_by(
+        "run__run_order",
+        "-changed_at",
+        "-id",
+    )
+    return api_success(ResultHistorySerializer(history, many=True).data)
 
 
 @api_view(["GET"])

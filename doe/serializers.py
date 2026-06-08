@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from .models import DesignRun, Factor, Project, Result
+from .models import DesignRun, Factor, Project, Result, ResultHistory
 
 
 class FactorSerializer(serializers.ModelSerializer):
@@ -198,6 +198,15 @@ class ResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = ["id", "run_order", "response", "note", "created_at", "updated_at"]
+
+
+class ResultHistorySerializer(serializers.ModelSerializer):
+    run_order = serializers.IntegerField(source="run.run_order", read_only=True)
+    changed_by = serializers.CharField(source="changed_by.username", read_only=True)
+
+    class Meta:
+        model = ResultHistory
+        fields = ["id", "run_order", "old_y", "new_y", "changed_by", "changed_at"]
 
 
 class LoginSerializer(serializers.Serializer):

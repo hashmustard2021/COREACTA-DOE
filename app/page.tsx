@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   FormEvent,
   KeyboardEvent,
   useEffect,
@@ -192,6 +193,15 @@ type ResultRecord = {
   note: string;
   created_at: string;
   updated_at: string;
+};
+
+type ResultHistoryRecord = {
+  id: number;
+  run_order: number;
+  old_y: string;
+  new_y: string;
+  changed_by: string;
+  changed_at: string;
 };
 
 type ProjectDetail = {
@@ -464,6 +474,8 @@ export default function Home() {
   const [designRuns, setDesignRuns] = useState<DesignRun[]>([]);
   const [yields, setYields] = useState<Record<number, string>>({});
   const [report, setReport] = useState<Report | null>(null);
+  const [resultHistory, setResultHistory] = useState<ResultHistoryRecord[]>([]);
+  const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Record<number, boolean>>({});
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -512,6 +524,13 @@ export default function Home() {
         .filter((item) => item.yield !== null && Number.isFinite(item.yield)),
     [designRuns, yields],
   );
+  const historyByRun = useMemo(() => {
+    return resultHistory.reduce<Record<number, ResultHistoryRecord[]>>((grouped, item) => {
+      grouped[item.run_order] = grouped[item.run_order] ?? [];
+      grouped[item.run_order].push(item);
+      return grouped;
+    }, {});
+  }, [resultHistory]);
   const paretoData = useMemo(() => {
     if (!report) return [];
     return report.pareto
@@ -614,6 +633,8 @@ export default function Home() {
       setDesignRuns([]);
       setYields({});
       setReport(null);
+      setResultHistory([]);
+      setExpandedHistoryRuns({});
       setProjectList([]);
       setSurfaceData(null);
       setStatusText("Logged out.");
@@ -660,6 +681,13 @@ export default function Home() {
     yieldInputRefs.current[index + 1]?.focus();
   }
 
+  function toggleRunHistory(runOrder: number) {
+    setExpandedHistoryRuns((current) => ({
+      ...current,
+      [runOrder]: !current[runOrder],
+    }));
+  }
+
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const validationMessage = validateFactorsForSubmit(factors);
@@ -673,6 +701,8 @@ export default function Home() {
     setErrorText("");
     setStatusText("");
     setReport(null);
+    setResultHistory([]);
+    setExpandedHistoryRuns({});
     setSurfaceData(null);
     setSurfaceMessage("결과를 입력한 뒤 Update Surface를 눌러 contour plot을 생성하세요.");
 
@@ -703,6 +733,8 @@ export default function Home() {
       setProject(createdProject);
       setDesignRuns(design);
       setYields({});
+      setResultHistory([]);
+      setExpandedHistoryRuns({});
       const availableSurfaceFactors = continuousFactors(factors);
       setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? factors[0]));
       setSurfaceYFactor(
@@ -792,6 +824,8 @@ export default function Home() {
       setDesignRuns([]);
       setYields({});
       setReport(null);
+      setResultHistory([]);
+      setExpandedHistoryRuns({});
       setSurfaceData(null);
       setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
       setStatusText("Project deleted.");
@@ -827,6 +861,7 @@ export default function Home() {
 
       const nextReport = await apiRequest<Report>(`/api/projects/${project.id}/report/`);
       setReport(nextReport);
+      setResultHistory(await loadResultHistory(project.id));
       setSurfaceData(null);
       setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
       setStatusText(`${filledRuns.length} result(s) submitted.`);
@@ -945,6 +980,10 @@ export default function Home() {
     }
   }
 
+  async function loadResultHistory(projectId: number) {
+    return apiRequest<ResultHistoryRecord[]>(`/api/projects/${projectId}/result-history/`);
+  }
+
   async function handleLoadProject(projectId: number) {
     setIsBusy(true);
     setErrorText("");
@@ -990,6 +1029,8 @@ export default function Home() {
       setDesignRuns(detail.design_runs);
       setYields(restoredYields);
       setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
+      setResultHistory(await loadResultHistory(projectId));
+      setExpandedHistoryRuns({});
       setSurfaceData(null);
       setSurfaceMessage(
         Object.keys(restoredYields).length > 0
@@ -1460,6 +1501,37 @@ export default function Home() {
             </tbody>
           </table>
         </div>
+        {designRuns.length > 0 && (
+          <div className="history-panel">
+            {designRuns.map((run) => {
+              const runHistory = historyByRun[run.run_order] ?? [];
+              const isExpanded = Boolean(expandedHistoryRuns[run.run_order]);
+              return (
+                <div className="history-run" key={run.id}>
+                  <button
+                    className="secondary-button compact-button"
+                    type="button"
+                    onClick={() => toggleRunHistory(run.run_order)}
+                    disabled={runHistory.length === 0}
+                  >
+                    Run {run.run_order} History {runHistory.length}
+                  </button>
+                  {isExpanded && (
+                    <div className="history-list">
+                      {runHistory.map((item) => (
+                        <div className="history-item" key={item.id}>
+                          <strong>{item.old_y} -&gt; {item.new_y}</strong>
+                          <span>{item.changed_by}</span>
+                          <time>{new Date(item.changed_at).toLocaleString()}</time>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="card report-card">
