@@ -1512,19 +1512,22 @@ export default function Home() {
                     className="secondary-button compact-button"
                     type="button"
                     onClick={() => toggleRunHistory(run.run_order)}
-                    disabled={runHistory.length === 0}
                   >
                     Run {run.run_order} History {runHistory.length}
                   </button>
                   {isExpanded && (
                     <div className="history-list">
-                      {runHistory.map((item) => (
-                        <div className="history-item" key={item.id}>
-                          <strong>{item.old_y} -&gt; {item.new_y}</strong>
-                          <span>{item.changed_by}</span>
-                          <time>{new Date(item.changed_at).toLocaleString()}</time>
-                        </div>
-                      ))}
+                      {runHistory.length === 0 ? (
+                        <p className="empty-state">수정 이력이 없습니다.</p>
+                      ) : (
+                        runHistory.map((item) => (
+                          <div className="history-item" key={item.id}>
+                            <strong>{item.old_y} -&gt; {item.new_y}</strong>
+                            <span>{item.changed_by}</span>
+                            <time>{new Date(item.changed_at).toLocaleString()}</time>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>

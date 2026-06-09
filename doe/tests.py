@@ -494,6 +494,26 @@ class SuzukiCouplingDoeApiTests(APITestCase):
             Decimal("42.0000"),
         )
 
+    def test_project_delete_removes_result_history(self):
+        project = self.create_project()
+        self.create_design(project["id"])
+        self.client.post(
+            f"/api/projects/{project['id']}/results/",
+            {"run_order": 1, "response": "42"},
+            format="json",
+        )
+        self.client.post(
+            f"/api/projects/{project['id']}/results/",
+            {"run_order": 1, "response": "55"},
+            format="json",
+        )
+        self.assertEqual(ResultHistory.objects.count(), 1)
+
+        response = self.client.delete(f"/api/projects/{project['id']}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ResultHistory.objects.count(), 0)
+
     def test_other_user_cannot_access_result_history(self):
         project = self.create_project()
         self.create_design(project["id"])
