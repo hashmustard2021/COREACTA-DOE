@@ -60,6 +60,15 @@ type FactorInput = {
   levels: string;
 };
 
+type FactorPresetId =
+  | "temperature"
+  | "time"
+  | "catalyst_loading"
+  | "concentration"
+  | "solvent"
+  | "base"
+  | "custom";
+
 type ProjectFactor = {
   id: number;
   idx: number;
@@ -254,6 +263,133 @@ const defaultFactors: FactorInput[] = [
   },
 ];
 
+const factorPresetOptions: Array<{
+  id: FactorPresetId;
+  label: string;
+  description: string;
+  factor: Omit<FactorInput, "idx"> | null;
+}> = [
+  {
+    id: "temperature",
+    label: "온도 / Temperature",
+    description: "Continuous, °C",
+    factor: {
+      factor_type: "continuous",
+      name_kr: "온도",
+      name_en: "Temperature",
+      unit: "°C",
+      low: "60",
+      high: "90",
+      levels: "",
+    },
+  },
+  {
+    id: "time",
+    label: "시간 / Time",
+    description: "Continuous, h",
+    factor: {
+      factor_type: "continuous",
+      name_kr: "시간",
+      name_en: "Time",
+      unit: "h",
+      low: "1",
+      high: "4",
+      levels: "",
+    },
+  },
+  {
+    id: "catalyst_loading",
+    label: "촉매량 / Catalyst loading",
+    description: "Continuous, mol%",
+    factor: {
+      factor_type: "continuous",
+      name_kr: "촉매량",
+      name_en: "Catalyst loading",
+      unit: "mol%",
+      low: "0.5",
+      high: "5",
+      levels: "",
+    },
+  },
+  {
+    id: "concentration",
+    label: "농도 / Concentration",
+    description: "Continuous, M",
+    factor: {
+      factor_type: "continuous",
+      name_kr: "농도",
+      name_en: "Concentration",
+      unit: "M",
+      low: "0.05",
+      high: "0.30",
+      levels: "",
+    },
+  },
+  {
+    id: "solvent",
+    label: "용매 / Solvent",
+    description: "Categorical, 2-level",
+    factor: {
+      factor_type: "categorical",
+      name_kr: "용매",
+      name_en: "Solvent",
+      unit: "",
+      low: "",
+      high: "",
+      levels: "THF, Toluene",
+    },
+  },
+  {
+    id: "base",
+    label: "염기 / Base",
+    description: "Categorical, 2-level",
+    factor: {
+      factor_type: "categorical",
+      name_kr: "염기",
+      name_en: "Base",
+      unit: "",
+      low: "",
+      high: "",
+      levels: "K2CO3, Cs2CO3",
+    },
+  },
+  {
+    id: "custom",
+    label: "직접 입력 / Custom",
+    description: "현재 입력값 유지",
+    factor: null,
+  },
+];
+
+function factorFromPreset(idx: number, presetId: FactorPresetId): FactorInput {
+  const preset = factorPresetOptions.find((option) => option.id === presetId);
+  if (!preset?.factor) {
+    return {
+      idx,
+      factor_type: "continuous",
+      name_kr: "",
+      name_en: "",
+      unit: "",
+      low: "",
+      high: "",
+      levels: "",
+    };
+  }
+  return { idx, ...preset.factor };
+}
+
+function factorPresetId(factor: FactorInput): FactorPresetId {
+  const matched = factorPresetOptions.find((option) => {
+    if (!option.factor) return false;
+    return (
+      option.factor.factor_type === factor.factor_type &&
+      option.factor.name_kr === factor.name_kr &&
+      option.factor.name_en === factor.name_en
+    );
+  });
+  return matched?.id ?? "custom";
+}
+
 function getCookie(name: string) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -408,24 +544,11 @@ function defaultContinuousFields(idx: number) {
 }
 
 function defaultCategoricalFields(idx: number) {
-  if (idx === 3) {
-    return {
-      name_kr: "용매",
-      name_en: "Solvent",
-      levels: "THF, Toluene",
-    };
-  }
-  if (idx === 4) {
-    return {
-      name_kr: "염기",
-      name_en: "Base",
-      levels: "K2CO3, Cs2CO3",
-    };
-  }
+  const preset = factorFromPreset(idx, idx % 2 === 1 ? "solvent" : "base");
   return {
-    name_kr: "",
-    name_en: "",
-    levels: "",
+    name_kr: preset.name_kr,
+    name_en: preset.name_en,
+    levels: preset.levels,
   };
 }
 
@@ -669,6 +792,15 @@ export default function Home() {
         }
         return { ...factor, [field]: value };
       }),
+    );
+  }
+
+  function applyFactorPreset(index: number, presetId: FactorPresetId) {
+    if (presetId === "custom") return;
+    setFactors((current) =>
+      current.map((factor, itemIndex) =>
+        itemIndex === index ? factorFromPreset(factor.idx, presetId) : factor,
+      ),
     );
   }
 
@@ -1308,8 +1440,31 @@ export default function Home() {
           <span>Center point 3회 추가</span>
         </label>
 
+        <div className="factor-question">
+          <div>
+            <span>1. 설정할 변수를 먼저 선택하세요</span>
+            <p>
+              각 슬롯에서 변수 템플릿을 고르면 type과 입력칸이 자동으로 바뀝니다.
+              직접 수정이 필요하면 Custom 상태에서 아래 값을 편집하세요.
+            </p>
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => {
+              setFactors(defaultFactors);
+              setIncludeCenterPoints(false);
+              setSurfaceData(null);
+            }}
+            disabled={isBusy}
+          >
+            기본 continuous 4개로 초기화
+          </button>
+        </div>
+
         <div className="factor-grid">
           <span>Factor</span>
+          <span>variable</span>
           <span>type</span>
           <span>name_kr</span>
           <span>name_en</span>
@@ -1320,6 +1475,18 @@ export default function Home() {
           {factors.map((factor, index) => (
             <div className="factor-row" key={factor.idx}>
               <strong>{factorKeys[index]}</strong>
+              <select
+                value={factorPresetId(factor)}
+                onChange={(event) =>
+                  applyFactorPreset(index, event.target.value as FactorPresetId)
+                }
+              >
+                {factorPresetOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <select
                 value={factor.factor_type}
                 onChange={(event) =>
