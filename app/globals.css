@@ -305,6 +305,58 @@ select:focus {
   margin-bottom: 16px;
 }
 
+.setup-start-card {
+  display: grid;
+  gap: 18px;
+}
+
+.doe-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.doe-summary > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafb;
+  padding: 14px;
+}
+
+.doe-summary strong {
+  display: block;
+  color: var(--accent-strong);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.doe-summary p,
+.setup-start-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.setup-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.factor-picker-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.setup-start-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .center-option {
   display: inline-flex;
   align-items: center;
@@ -847,9 +899,17 @@ tbody tr:last-child td {
   .graph-section,
   .project-list,
   .project-meta-grid,
+  .doe-summary,
+  .factor-picker-list,
+  .setup-choice-grid,
   .stats-grid,
   .surface-controls {
     grid-template-columns: 1fr;
+  }
+
+  .setup-start-footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

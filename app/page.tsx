@@ -592,6 +592,7 @@ export default function Home() {
   const [responseName, setResponseName] = useState("Yield");
   const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
+  const [isSetupStarted, setIsSetupStarted] = useState(false);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [designRuns, setDesignRuns] = useState<DesignRun[]>([]);
@@ -618,6 +619,9 @@ export default function Home() {
   );
   const surfaceFactorOptions = useMemo(() => continuousFactors(factors), [factors]);
   const hasContinuousFactor = surfaceFactorOptions.length > 0;
+  const categoricalFactorCount = factors.filter(
+    (factor) => factor.factor_type === "categorical",
+  ).length;
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -753,6 +757,7 @@ export default function Home() {
       setResponseName("Yield");
       setProjectGoal("maximize");
       setFactors(defaultFactors);
+      setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
       setReport(null);
@@ -802,6 +807,23 @@ export default function Home() {
         itemIndex === index ? factorFromPreset(factor.idx, presetId) : factor,
       ),
     );
+  }
+
+  function applyDefaultContinuousFactors() {
+    setFactors(defaultFactors);
+    setIncludeCenterPoints(false);
+    setSurfaceData(null);
+  }
+
+  function applyMixedExampleFactors() {
+    setFactors([
+      factorFromPreset(1, "temperature"),
+      factorFromPreset(2, "time"),
+      factorFromPreset(3, "solvent"),
+      factorFromPreset(4, "base"),
+    ]);
+    setIncludeCenterPoints(false);
+    setSurfaceData(null);
   }
 
   function focusNextYieldInput(
@@ -953,6 +975,7 @@ export default function Home() {
       setResponseName("Yield");
       setProjectGoal("maximize");
       setFactors(defaultFactors);
+      setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
       setReport(null);
@@ -1151,6 +1174,7 @@ export default function Home() {
           levels: factor.levels.join(", "),
         }));
       setFactors(restoredFactors);
+      setIsSetupStarted(true);
       const availableSurfaceFactors = continuousFactors(restoredFactors);
       setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? restoredFactors[0]));
       setSurfaceYFactor(
@@ -1347,6 +1371,77 @@ export default function Home() {
         </div>
       )}
 
+      {!isSetupStarted && (
+        <section className="card setup-start-card">
+          <div className="card-heading">
+            <div>
+              <span>DOE Setup Guide</span>
+              <h2>먼저 실험 설계 방식과 변수를 정합니다</h2>
+            </div>
+          </div>
+
+          <div className="doe-summary">
+            <div>
+              <strong>8-run fractional factorial</strong>
+              <p>
+                Coreacta DOE v2는 최대 4개 변수 A-D를 사용합니다. A, B, C는
+                low/high 조합으로 배치하고 D는 A × B × C 관계로 계산해 8개
+                실험 조건을 만듭니다.
+              </p>
+            </div>
+            <div>
+              <strong>변수 설정 개수: {factors.length}개</strong>
+              <p>
+                Continuous 변수는 low/high 범위를 입력하고, categorical 변수는
+                v2 MVP에서 정확히 2개 level을 입력합니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="setup-choice-grid">
+            <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
+              기본 continuous 4개
+            </button>
+            <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
+              mixed 예제
+            </button>
+          </div>
+
+          <div className="factor-picker-list">
+            {factors.map((factor, index) => (
+              <label className="field" key={factor.idx}>
+                <span>
+                  Factor {factorKeys[index]} - 설정할 변수
+                </span>
+                <select
+                  value={factorPresetId(factor)}
+                  onChange={(event) =>
+                    applyFactorPreset(index, event.target.value as FactorPresetId)
+                  }
+                >
+                  {factorPresetOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label} · {option.description}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          <div className="setup-start-footer">
+            <p>
+              현재 선택: continuous {factors.length - categoricalFactorCount}개,
+              categorical {categoricalFactorCount}개
+            </p>
+            <button type="button" onClick={() => setIsSetupStarted(true)}>
+              변수 입력 시작
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isSetupStarted && (
       <form className="card setup-card" onSubmit={handleGenerateDesign}>
         <div className="card-heading">
           <div>
@@ -1451,14 +1546,18 @@ export default function Home() {
           <button
             className="secondary-button"
             type="button"
-            onClick={() => {
-              setFactors(defaultFactors);
-              setIncludeCenterPoints(false);
-              setSurfaceData(null);
-            }}
+            onClick={applyDefaultContinuousFactors}
             disabled={isBusy}
           >
             기본 continuous 4개로 초기화
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => setIsSetupStarted(false)}
+            disabled={isBusy}
+          >
+            변수 선택으로 돌아가기
           </button>
         </div>
 
@@ -1544,6 +1643,7 @@ export default function Home() {
           ))}
         </div>
       </form>
+      )}
 
       <section className="card">
         <div className="card-heading">
