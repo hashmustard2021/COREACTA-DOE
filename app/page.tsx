@@ -1324,6 +1324,7 @@ export default function Home() {
 
       {currentUser && (
         <>
+      {isSetupStarted && (
       <section className="card project-list-card">
         <div className="card-heading">
           <div>
@@ -1364,8 +1365,9 @@ export default function Home() {
           </div>
         )}
       </section>
+      )}
 
-      {(errorText || statusText) && (
+      {isSetupStarted && (errorText || statusText) && (
         <div className={errorText ? "notice error" : "notice"}>
           {errorText || statusText}
         </div>
@@ -1645,6 +1647,8 @@ export default function Home() {
       </form>
       )}
 
+      {isSetupStarted && (
+      <>
       <section className="card">
         <div className="card-heading">
           <div>
@@ -2177,6 +2181,8 @@ export default function Home() {
           )}
         </article>
       </section>
+      </>
+      )}
         </>
       )}
     </main>
