@@ -1377,35 +1377,48 @@ export default function Home() {
         <section className="card setup-start-card">
           <div className="card-heading">
             <div>
-              <span>DOE Setup Guide</span>
-              <h2>먼저 실험 설계 방식과 변수를 정합니다</h2>
+              <span>Start Here</span>
+              <h2>어떤 조건을 바꿔볼지 먼저 정해볼게요</h2>
             </div>
+          </div>
+
+          <div className="guide-intro">
+            <p>
+              실험설계(DOE)를 처음 사용해도 괜찮습니다. 온도, 시간, 용매처럼
+              수율에 영향을 줄 수 있는 조건 4개를 고르면 Coreacta가 8개의
+              실험 조합을 자동으로 만들어줍니다.
+            </p>
           </div>
 
           <div className="doe-summary">
             <div>
-              <strong>8-run fractional factorial</strong>
+              <strong>무엇을 해주는 방식인가요?</strong>
               <p>
-                Coreacta DOE v2는 최대 4개 변수 A-D를 사용합니다. A, B, C는
-                low/high 조합으로 배치하고 D는 A × B × C 관계로 계산해 8개
-                실험 조건을 만듭니다.
+                모든 조합을 다 해보는 대신, 중요한 경향을 빠르게 보기 위해
+                8개 실험만 먼저 제안합니다.
               </p>
             </div>
             <div>
-              <strong>변수 설정 개수: {factors.length}개</strong>
+              <strong>지금 필요한 입력은 {factors.length}개 변수입니다</strong>
               <p>
-                Continuous 변수는 low/high 범위를 입력하고, categorical 변수는
-                v2 MVP에서 정확히 2개 level을 입력합니다.
+                숫자로 바꾸는 조건은 범위를, 종류를 바꾸는 조건은 비교할
+                두 후보를 입력하면 됩니다.
               </p>
             </div>
           </div>
 
+          <div className="guide-steps">
+            <span>1. 바꿔볼 변수 4개 선택</span>
+            <span>2. 각 변수의 낮은 값/높은 값 또는 후보 2개 입력</span>
+            <span>3. 8개 실험 조건 생성</span>
+          </div>
+
           <div className="setup-choice-grid">
             <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
-              기본 continuous 4개
+              숫자 변수만 사용
             </button>
             <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
-              mixed 예제
+              숫자 + 종류 변수 사용
             </button>
           </div>
 
@@ -1413,7 +1426,7 @@ export default function Home() {
             {factors.map((factor, index) => (
               <label className="field" key={factor.idx}>
                 <span>
-                  Factor {factorKeys[index]} - 설정할 변수
+                  {index + 1}번째 변수
                 </span>
                 <select
                   value={factorPresetId(factor)}
@@ -1433,11 +1446,11 @@ export default function Home() {
 
           <div className="setup-start-footer">
             <p>
-              현재 선택: continuous {factors.length - categoricalFactorCount}개,
-              categorical {categoricalFactorCount}개
+              현재 선택: 숫자 변수 {factors.length - categoricalFactorCount}개,
+              종류 변수 {categoricalFactorCount}개
             </p>
             <button type="button" onClick={() => setIsSetupStarted(true)}>
-              변수 입력 시작
+              선택한 변수로 입력 시작
             </button>
           </div>
         </section>
