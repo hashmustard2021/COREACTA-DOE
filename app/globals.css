@@ -358,6 +358,85 @@ select:focus {
   gap: 10px;
 }
 
+.choice-with-help {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+}
+
+.choice-with-help > button {
+  width: 100%;
+}
+
+.help-popover {
+  position: relative;
+}
+
+.help-popover summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 900;
+  list-style: none;
+}
+
+.help-popover summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-popover summary:hover,
+.help-popover summary:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  outline: none;
+}
+
+.help-popover div {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  right: 0;
+  display: none;
+  width: min(280px, 70vw);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 12px;
+}
+
+.help-popover div::before {
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  background: #ffffff;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.help-popover:hover div,
+.help-popover:focus-within div,
+.help-popover[open] div {
+  display: block;
+}
+
 .guide-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -378,33 +457,6 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-
-.factor-example {
-  position: relative;
-  display: block;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #ffffff;
-  color: var(--muted);
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.45;
-  margin-top: 2px;
-  padding: 9px 10px;
-}
-
-.factor-example::before {
-  position: absolute;
-  top: -6px;
-  left: 14px;
-  width: 10px;
-  height: 10px;
-  border-left: 1px solid var(--line);
-  border-top: 1px solid var(--line);
-  background: #ffffff;
-  content: "";
-  transform: rotate(45deg);
 }
 
 .setup-start-footer {

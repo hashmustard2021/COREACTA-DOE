@@ -1422,12 +1422,30 @@ export default function Home() {
           </div>
 
           <div className="setup-choice-grid">
-            <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
-              범위 조건만 사용
-            </button>
-            <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
-              범위 조건 + 후보 조건 사용
-            </button>
+            <div className="choice-with-help">
+              <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
+                범위 조건만 사용
+              </button>
+              <details className="help-popover">
+                <summary aria-label="범위 조건 예시">?</summary>
+                <div>
+                  온도 60-90 °C, 시간 1-4 h처럼 낮은 값과 높은 값을 정해
+                  범위 안에서 바꿔보는 조건입니다.
+                </div>
+              </details>
+            </div>
+            <div className="choice-with-help">
+              <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
+                범위 조건 + 후보 조건 사용
+              </button>
+              <details className="help-popover">
+                <summary aria-label="후보 조건 예시">?</summary>
+                <div>
+                  온도처럼 범위를 바꾸는 조건에 더해, 용매 THF vs Toluene이나
+                  염기 K2CO3 vs Cs2CO3처럼 후보 2개를 비교합니다.
+                </div>
+              </details>
+            </div>
           </div>
 
           <div className="factor-picker-list">
@@ -1448,9 +1466,6 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
-                <em className="factor-example">
-                  {factorPresetOptions.find((option) => option.id === factorPresetId(factor))?.example}
-                </em>
               </label>
             ))}
           </div>
