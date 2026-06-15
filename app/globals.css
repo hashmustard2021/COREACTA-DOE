@@ -380,6 +380,33 @@ select:focus {
   gap: 12px;
 }
 
+.factor-example {
+  position: relative;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  margin-top: 2px;
+  padding: 9px 10px;
+}
+
+.factor-example::before {
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  background: #ffffff;
+  content: "";
+  transform: rotate(45deg);
+}
+
 .setup-start-footer {
   display: flex;
   align-items: center;

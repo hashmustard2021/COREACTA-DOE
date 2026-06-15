@@ -267,12 +267,14 @@ const factorPresetOptions: Array<{
   id: FactorPresetId;
   label: string;
   description: string;
+  example: string;
   factor: Omit<FactorInput, "idx"> | null;
 }> = [
   {
     id: "temperature",
     label: "온도 / Temperature",
-    description: "Continuous, °C",
+    description: "범위 조건",
+    example: "예: 60-90 °C처럼 낮은 값과 높은 값을 정합니다.",
     factor: {
       factor_type: "continuous",
       name_kr: "온도",
@@ -286,7 +288,8 @@ const factorPresetOptions: Array<{
   {
     id: "time",
     label: "시간 / Time",
-    description: "Continuous, h",
+    description: "범위 조건",
+    example: "예: 1-4 h처럼 반응 시간을 어느 범위에서 볼지 정합니다.",
     factor: {
       factor_type: "continuous",
       name_kr: "시간",
@@ -300,7 +303,8 @@ const factorPresetOptions: Array<{
   {
     id: "catalyst_loading",
     label: "촉매량 / Catalyst loading",
-    description: "Continuous, mol%",
+    description: "범위 조건",
+    example: "예: 0.5-5 mol%처럼 투입량의 낮은 값과 높은 값을 정합니다.",
     factor: {
       factor_type: "continuous",
       name_kr: "촉매량",
@@ -314,7 +318,8 @@ const factorPresetOptions: Array<{
   {
     id: "concentration",
     label: "농도 / Concentration",
-    description: "Continuous, M",
+    description: "범위 조건",
+    example: "예: 0.05-0.30 M처럼 희석/농축 범위를 정합니다.",
     factor: {
       factor_type: "continuous",
       name_kr: "농도",
@@ -328,7 +333,8 @@ const factorPresetOptions: Array<{
   {
     id: "solvent",
     label: "용매 / Solvent",
-    description: "Categorical, 2-level",
+    description: "후보 조건",
+    example: "예: THF와 Toluene처럼 비교할 후보 2개를 고릅니다.",
     factor: {
       factor_type: "categorical",
       name_kr: "용매",
@@ -342,7 +348,8 @@ const factorPresetOptions: Array<{
   {
     id: "base",
     label: "염기 / Base",
-    description: "Categorical, 2-level",
+    description: "후보 조건",
+    example: "예: K2CO3와 Cs2CO3처럼 비교할 후보 2개를 고릅니다.",
     factor: {
       factor_type: "categorical",
       name_kr: "염기",
@@ -357,6 +364,7 @@ const factorPresetOptions: Array<{
     id: "custom",
     label: "직접 입력 / Custom",
     description: "현재 입력값 유지",
+    example: "직접 조건 이름과 값을 입력합니다.",
     factor: null,
   },
 ];
@@ -1401,24 +1409,24 @@ export default function Home() {
             <div>
               <strong>지금 필요한 입력은 {factors.length}개 변수입니다</strong>
               <p>
-                숫자로 바꾸는 조건은 범위를, 종류를 바꾸는 조건은 비교할
-                두 후보를 입력하면 됩니다.
+                범위 조건은 낮은 값과 높은 값을 입력하고, 후보 조건은 서로
+                비교할 후보 2개를 입력하면 됩니다.
               </p>
             </div>
           </div>
 
           <div className="guide-steps">
             <span>1. 바꿔볼 변수 4개 선택</span>
-            <span>2. 각 변수의 낮은 값/높은 값 또는 후보 2개 입력</span>
+            <span>2. 범위 또는 비교 후보 입력</span>
             <span>3. 8개 실험 조건 생성</span>
           </div>
 
           <div className="setup-choice-grid">
             <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
-              숫자 변수만 사용
+              범위 조건만 사용
             </button>
             <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
-              숫자 + 종류 변수 사용
+              범위 조건 + 후보 조건 사용
             </button>
           </div>
 
@@ -1440,14 +1448,17 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+                <em className="factor-example">
+                  {factorPresetOptions.find((option) => option.id === factorPresetId(factor))?.example}
+                </em>
               </label>
             ))}
           </div>
 
           <div className="setup-start-footer">
             <p>
-              현재 선택: 숫자 변수 {factors.length - categoricalFactorCount}개,
-              종류 변수 {categoricalFactorCount}개
+              현재 선택: 범위 조건 {factors.length - categoricalFactorCount}개,
+              후보 조건 {categoricalFactorCount}개
             </p>
             <button type="button" onClick={() => setIsSetupStarted(true)}>
               선택한 변수로 입력 시작
