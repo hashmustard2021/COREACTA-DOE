@@ -360,51 +360,49 @@ select:focus {
 
 .choice-with-help {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  gap: 8px;
-  align-items: center;
+  display: block;
 }
 
 .choice-with-help > button {
   width: 100%;
+  padding-right: 42px;
 }
 
 .help-popover {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  z-index: 2;
+  transform: translateY(-50%);
 }
 
-.help-popover summary {
+.help-popover-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 22px;
+  height: 22px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #ffffff;
   color: var(--accent-strong);
   cursor: pointer;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 900;
   list-style: none;
 }
 
-.help-popover summary::-webkit-details-marker {
-  display: none;
-}
-
-.help-popover summary:hover,
-.help-popover summary:focus {
+.help-popover-button:hover,
+.help-popover-button:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
   outline: none;
 }
 
-.help-popover div {
+.help-popover [role="tooltip"] {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 10px);
+  top: calc(100% + 9px);
   right: 0;
   display: none;
   width: min(280px, 70vw);
@@ -418,7 +416,7 @@ select:focus {
   padding: 12px;
 }
 
-.help-popover div::before {
+.help-popover [role="tooltip"]::before {
   position: absolute;
   top: -6px;
   right: 12px;
@@ -431,9 +429,9 @@ select:focus {
   transform: rotate(45deg);
 }
 
-.help-popover:hover div,
-.help-popover:focus-within div,
-.help-popover[open] div {
+.help-popover:hover [role="tooltip"],
+.help-popover:focus-within [role="tooltip"],
+.choice-with-help:hover .help-popover [role="tooltip"] {
   display: block;
 }
 
@@ -447,10 +445,18 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
-  color: var(--accent-strong);
+  color: var(--muted);
   font-size: 13px;
   font-weight: 800;
   padding: 12px;
+}
+
+.guide-steps span.active {
+  border-color: rgba(15, 118, 110, 0.35);
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.12);
+  color: var(--accent-strong);
 }
 
 .factor-picker-list {
