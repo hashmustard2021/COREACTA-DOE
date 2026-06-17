@@ -1423,10 +1423,10 @@ export default function Home() {
           </div>
 
           <div className="setup-choice-grid">
-            <div className="choice-with-help">
+            <div className={isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}>
               <button
                 type="button"
-                className={isRangeOnlySetup ? "secondary-button active" : "secondary-button"}
+                className="choice-button"
                 onClick={applyDefaultContinuousFactors}
               >
                 범위 조건만 사용
@@ -1441,10 +1441,10 @@ export default function Home() {
                 </span>
               </span>
             </div>
-            <div className="choice-with-help">
+            <div className={!isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}>
               <button
                 type="button"
-                className={!isRangeOnlySetup ? "secondary-button active" : "secondary-button"}
+                className="choice-button"
                 onClick={applyMixedExampleFactors}
               >
                 범위 조건 + 후보 조건 사용

@@ -360,15 +360,27 @@ select:focus {
 
 .choice-with-help {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--accent-strong);
+  gap: 6px;
+  padding: 0 12px;
 }
 
-.choice-with-help > button {
-  width: 100%;
-  padding-right: 34px;
+.choice-button {
+  min-height: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
 }
 
-.choice-with-help > button.active {
+.choice-with-help.active {
   border-color: rgba(15, 118, 110, 0.45);
   background: var(--accent-soft);
   box-shadow: 0 8px 20px rgba(15, 118, 110, 0.12);
@@ -376,27 +388,27 @@ select:focus {
 }
 
 .help-popover {
-  position: absolute;
-  top: 50%;
-  right: 9px;
+  position: relative;
   z-index: 2;
-  transform: translateY(-50%);
+  display: inline-flex;
 }
 
 .help-popover-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  min-height: 15px;
+  width: 15px;
+  height: 15px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #ffffff;
   color: var(--accent-strong);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   list-style: none;
+  padding: 0;
 }
 
 .help-popover-button:hover,
@@ -410,7 +422,7 @@ select:focus {
   position: absolute;
   z-index: 20;
   top: calc(100% + 9px);
-  right: 0;
+  left: 50%;
   display: none;
   width: min(280px, 70vw);
   border: 1px solid var(--line);
@@ -421,12 +433,13 @@ select:focus {
   font-size: 13px;
   line-height: 1.55;
   padding: 12px;
+  transform: translateX(-50%);
 }
 
 .help-popover [role="tooltip"]::before {
   position: absolute;
   top: -6px;
-  right: 12px;
+  left: calc(50% - 5px);
   width: 10px;
   height: 10px;
   border-left: 1px solid var(--line);
