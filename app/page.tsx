@@ -630,6 +630,7 @@ export default function Home() {
   const categoricalFactorCount = factors.filter(
     (factor) => factor.factor_type === "categorical",
   ).length;
+  const isRangeOnlySetup = categoricalFactorCount === 0;
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -1423,7 +1424,11 @@ export default function Home() {
 
           <div className="setup-choice-grid">
             <div className="choice-with-help">
-              <button type="button" className="secondary-button" onClick={applyDefaultContinuousFactors}>
+              <button
+                type="button"
+                className={isRangeOnlySetup ? "secondary-button active" : "secondary-button"}
+                onClick={applyDefaultContinuousFactors}
+              >
                 범위 조건만 사용
               </button>
               <span className="help-popover">
@@ -1437,7 +1442,11 @@ export default function Home() {
               </span>
             </div>
             <div className="choice-with-help">
-              <button type="button" className="secondary-button" onClick={applyMixedExampleFactors}>
+              <button
+                type="button"
+                className={!isRangeOnlySetup ? "secondary-button active" : "secondary-button"}
+                onClick={applyMixedExampleFactors}
+              >
                 범위 조건 + 후보 조건 사용
               </button>
               <span className="help-popover">
