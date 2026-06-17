@@ -631,6 +631,14 @@ export default function Home() {
     (factor) => factor.factor_type === "categorical",
   ).length;
   const isRangeOnlySetup = categoricalFactorCount === 0;
+  const availableFactorPresetOptions = useMemo(
+    () =>
+      factorPresetOptions.filter((option) => {
+        if (!isRangeOnlySetup) return true;
+        return !option.factor || option.factor.factor_type === "continuous";
+      }),
+    [isRangeOnlySetup],
+  );
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -1497,7 +1505,7 @@ export default function Home() {
                     applyFactorPreset(index, event.target.value as FactorPresetId)
                   }
                 >
-                  {factorPresetOptions.map((option) => (
+                  {availableFactorPresetOptions.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.label} · {option.description}
                     </option>
@@ -1658,7 +1666,7 @@ export default function Home() {
                   applyFactorPreset(index, event.target.value as FactorPresetId)
                 }
               >
-                {factorPresetOptions.map((option) => (
+                {availableFactorPresetOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
@@ -1671,7 +1679,7 @@ export default function Home() {
                 }
               >
                 <option value="continuous">Continuous</option>
-                <option value="categorical">Categorical</option>
+                {!isRangeOnlySetup && <option value="categorical">Categorical</option>}
               </select>
               <input
                 value={factor.name_kr}
