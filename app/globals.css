@@ -368,16 +368,20 @@ select:focus {
   border-radius: 8px;
   background: #ffffff;
   color: var(--accent-strong);
+  cursor: pointer;
   gap: 6px;
   padding: 0 12px;
 }
 
 .choice-button {
-  min-height: auto;
-  border: 0;
-  background: transparent;
   color: inherit;
-  padding: 0;
+  font-weight: 700;
+}
+
+.choice-with-help:hover,
+.choice-with-help:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .choice-with-help.active {

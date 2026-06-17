@@ -1423,16 +1423,28 @@ export default function Home() {
           </div>
 
           <div className="setup-choice-grid">
-            <div className={isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}>
-              <button
-                type="button"
-                className="choice-button"
-                onClick={applyDefaultContinuousFactors}
-              >
+            <div
+              className={isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}
+              role="button"
+              tabIndex={0}
+              onClick={applyDefaultContinuousFactors}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  applyDefaultContinuousFactors();
+                }
+              }}
+            >
+              <span className="choice-button">
                 범위 조건만 사용
-              </button>
+              </span>
               <span className="help-popover">
-                <button type="button" className="help-popover-button" aria-label="범위 조건 예시">
+                <button
+                  type="button"
+                  className="help-popover-button"
+                  aria-label="범위 조건 예시"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   ?
                 </button>
                 <span role="tooltip">
@@ -1441,16 +1453,28 @@ export default function Home() {
                 </span>
               </span>
             </div>
-            <div className={!isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}>
-              <button
-                type="button"
-                className="choice-button"
-                onClick={applyMixedExampleFactors}
-              >
+            <div
+              className={!isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}
+              role="button"
+              tabIndex={0}
+              onClick={applyMixedExampleFactors}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  applyMixedExampleFactors();
+                }
+              }}
+            >
+              <span className="choice-button">
                 범위 조건 + 후보 조건 사용
-              </button>
+              </span>
               <span className="help-popover">
-                <button type="button" className="help-popover-button" aria-label="후보 조건 예시">
+                <button
+                  type="button"
+                  className="help-popover-button"
+                  aria-label="후보 조건 예시"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   ?
                 </button>
                 <span role="tooltip">
