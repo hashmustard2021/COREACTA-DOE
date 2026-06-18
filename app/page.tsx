@@ -62,6 +62,8 @@ type FactorInput = {
 
 type FactorFieldErrors = Record<number, Partial<Record<keyof FactorInput, string>>>;
 
+type YieldErrors = Record<number, string>;
+
 type FactorPresetId =
   | "temperature"
   | "time"
@@ -482,6 +484,19 @@ function parseFactorLevels(levels: string) {
     .filter(Boolean);
 }
 
+function validateYieldInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const numericValue = Number(trimmed);
+  if (!Number.isFinite(numericValue)) {
+    return "수율은 숫자로 입력해주세요. 예: 61.5";
+  }
+  if (numericValue < 0 || numericValue > 100) {
+    return "수율은 0-100% 범위로 입력해주세요.";
+  }
+  return "";
+}
+
 function serializeFactorInput(factor: FactorInput) {
   if (factor.factor_type === "categorical") {
     return {
@@ -637,6 +652,7 @@ export default function Home() {
   const [project, setProject] = useState<Project | null>(null);
   const [designRuns, setDesignRuns] = useState<DesignRun[]>([]);
   const [yields, setYields] = useState<Record<number, string>>({});
+  const [yieldErrors, setYieldErrors] = useState<YieldErrors>({});
   const [report, setReport] = useState<Report | null>(null);
   const [resultHistory, setResultHistory] = useState<ResultHistoryRecord[]>([]);
   const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Record<number, boolean>>({});
@@ -811,6 +827,7 @@ export default function Home() {
       setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
+      setYieldErrors({});
       setReport(null);
       setResultHistory([]);
       setExpandedHistoryRuns({});
@@ -905,6 +922,29 @@ export default function Home() {
     yieldInputRefs.current[index + 1]?.focus();
   }
 
+  function updateYield(runOrder: number, value: string) {
+    setYields((current) => ({
+      ...current,
+      [runOrder]: value,
+    }));
+    setYieldErrors((current) => ({
+      ...current,
+      [runOrder]: validateYieldInput(value),
+    }));
+  }
+
+  function validateAllYields() {
+    const nextErrors: YieldErrors = {};
+    for (const run of designRuns) {
+      const message = validateYieldInput(yields[run.run_order] ?? "");
+      if (message) {
+        nextErrors[run.run_order] = message;
+      }
+    }
+    setYieldErrors(nextErrors);
+    return nextErrors;
+  }
+
   function toggleRunHistory(runOrder: number) {
     setExpandedHistoryRuns((current) => ({
       ...current,
@@ -959,6 +999,7 @@ export default function Home() {
       setProject(createdProject);
       setDesignRuns(design);
       setYields({});
+      setYieldErrors({});
       setResultHistory([]);
       setExpandedHistoryRuns({});
       const availableSurfaceFactors = continuousFactors(factors);
@@ -1036,6 +1077,7 @@ export default function Home() {
     setIsSetupStarted(false);
     setDesignRuns([]);
     setYields({});
+    setYieldErrors({});
     setReport(null);
     setResultHistory([]);
     setExpandedHistoryRuns({});
@@ -1077,6 +1119,13 @@ export default function Home() {
 
   async function handleSubmitResults() {
     if (!project) return;
+    const nextYieldErrors = validateAllYields();
+    if (Object.keys(nextYieldErrors).length > 0) {
+      setErrorText("수율 입력값을 확인해주세요. 표시된 위치의 안내에 맞게 수정하면 됩니다.");
+      setStatusText("");
+      return;
+    }
+
     setIsBusy(true);
     setErrorText("");
     setStatusText("");
@@ -1268,6 +1317,7 @@ export default function Home() {
       );
       setDesignRuns(detail.design_runs);
       setYields(restoredYields);
+      setYieldErrors({});
       setReport(await apiRequest<Report>(`/api/projects/${projectId}/report/`));
       setResultHistory(await loadResultHistory(projectId));
       setExpandedHistoryRuns({});
@@ -1958,22 +2008,27 @@ export default function Home() {
                       <span className="run-badge">Run {run.run_order}</span>
                     </td>
                     <td>
-                      <input
-                        ref={(element) => {
-                          yieldInputRefs.current[index] = element;
-                        }}
-                        className="yield-input numeric-input"
-                        inputMode="decimal"
-                        value={yields[run.run_order] ?? ""}
-                        onChange={(event) =>
-                          setYields((current) => ({
-                            ...current,
-                            [run.run_order]: event.target.value,
-                          }))
-                        }
-                        onKeyDown={(event) => focusNextYieldInput(event, index)}
-                        placeholder="예: 61.5"
-                      />
+                      <div className="result-cell">
+                        <input
+                          ref={(element) => {
+                            yieldInputRefs.current[index] = element;
+                          }}
+                          className={
+                            yieldErrors[run.run_order]
+                              ? "yield-input numeric-input invalid-input"
+                              : "yield-input numeric-input"
+                          }
+                          inputMode="decimal"
+                          value={yields[run.run_order] ?? ""}
+                          onChange={(event) => updateYield(run.run_order, event.target.value)}
+                          onKeyDown={(event) => focusNextYieldInput(event, index)}
+                          aria-invalid={Boolean(yieldErrors[run.run_order])}
+                          placeholder="예: 61.5"
+                        />
+                        {yieldErrors[run.run_order] && (
+                          <small className="field-error">{yieldErrors[run.run_order]}</small>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
