@@ -60,6 +60,8 @@ type FactorInput = {
   levels: string;
 };
 
+type FactorFieldErrors = Record<number, Partial<Record<keyof FactorInput, string>>>;
+
 type FactorPresetId =
   | "temperature"
   | "time"
@@ -507,33 +509,63 @@ function serializeFactorInput(factor: FactorInput) {
 }
 
 function validateFactorsForSubmit(factors: FactorInput[]) {
+  const errors: FactorFieldErrors = {};
+
+  const addError = (idx: number, field: keyof FactorInput, message: string) => {
+    errors[idx] = {
+      ...(errors[idx] ?? {}),
+      [field]: message,
+    };
+  };
+
   for (const factor of factors) {
-    const label = `${factor.name_kr || factor.name_en || `Factor ${factor.idx}`}`;
+    if (!factor.name_kr.trim()) {
+      addError(factor.idx, "name_kr", "한글 조건명을 입력해주세요. 예: 온도");
+    }
+    if (!factor.name_en.trim()) {
+      addError(factor.idx, "name_en", "영문 조건명을 입력해주세요. 예: Temperature");
+    }
+
     if (factor.factor_type === "continuous") {
       const low = Number(factor.low);
       const high = Number(factor.high);
-      if (!factor.unit.trim() || !factor.low.trim() || !factor.high.trim()) {
-        return `${label}: continuous factor는 unit, low, high가 모두 필요합니다.`;
+      if (!factor.unit.trim()) {
+        addError(factor.idx, "unit", "단위를 입력해주세요. 예: °C, h, mol%");
       }
-      if (!Number.isFinite(low) || !Number.isFinite(high)) {
-        return `${label}: low/high는 숫자여야 합니다.`;
+      if (!factor.low.trim()) {
+        addError(factor.idx, "low", "낮은 값을 입력해주세요.");
       }
-      if (low >= high) {
-        return `${label}: low는 high보다 작아야 합니다.`;
+      if (!factor.high.trim()) {
+        addError(factor.idx, "high", "높은 값을 입력해주세요.");
+      }
+      if (factor.low.trim() && !Number.isFinite(low)) {
+        addError(factor.idx, "low", "숫자로 입력해주세요. 예: 60");
+      }
+      if (factor.high.trim() && !Number.isFinite(high)) {
+        addError(factor.idx, "high", "숫자로 입력해주세요. 예: 90");
+      }
+      if (Number.isFinite(low) && Number.isFinite(high) && low >= high) {
+        addError(factor.idx, "low", "낮은 값은 높은 값보다 작아야 합니다.");
+        addError(factor.idx, "high", "높은 값은 낮은 값보다 커야 합니다.");
       }
       continue;
     }
 
     const levels = parseFactorLevels(factor.levels);
     if (levels.length < 2) {
-      return `${label}: categorical factor는 levels가 최소 2개 필요합니다.`;
+      addError(factor.idx, "levels", "비교할 후보 2개를 쉼표로 입력해주세요. 예: THF, Toluene");
     }
     if (levels.length > 2) {
-      return "현재 v2 MVP에서는 categorical factor는 2-level만 지원합니다.";
+      addError(factor.idx, "levels", "현재 v2 MVP에서는 후보 조건은 2개만 지원합니다.");
     }
   }
 
-  return "";
+  return {
+    errors,
+    message: Object.keys(errors).length
+      ? "입력값을 확인해주세요. 표시된 위치의 안내에 맞게 수정하면 됩니다."
+      : "",
+  };
 }
 
 function continuousFactors(factors: FactorInput[]) {
@@ -610,6 +642,7 @@ export default function Home() {
   const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Record<number, boolean>>({});
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
+  const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
   const [isBusy, setIsBusy] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
@@ -774,6 +807,7 @@ export default function Home() {
       setResponseName("Yield");
       setProjectGoal("maximize");
       setFactors(defaultFactors);
+      setFactorErrors({});
       setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
@@ -791,6 +825,16 @@ export default function Home() {
   }
 
   function updateFactor(index: number, field: keyof FactorInput, value: string) {
+    const factorIdx = factors[index]?.idx;
+    if (factorIdx) {
+      setFactorErrors((current) => ({
+        ...current,
+        [factorIdx]: {
+          ...(current[factorIdx] ?? {}),
+          [field]: undefined,
+        },
+      }));
+    }
     setFactors((current) =>
       current.map((factor, itemIndex) => {
         if (itemIndex !== index) return factor;
@@ -819,6 +863,13 @@ export default function Home() {
 
   function applyFactorPreset(index: number, presetId: FactorPresetId) {
     if (presetId === "custom") return;
+    const factorIdx = factors[index]?.idx;
+    if (factorIdx) {
+      setFactorErrors((current) => ({
+        ...current,
+        [factorIdx]: {},
+      }));
+    }
     setFactors((current) =>
       current.map((factor, itemIndex) =>
         itemIndex === index ? factorFromPreset(factor.idx, presetId) : factor,
@@ -828,6 +879,7 @@ export default function Home() {
 
   function applyDefaultContinuousFactors() {
     setFactors(defaultFactors);
+    setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
   }
@@ -839,6 +891,7 @@ export default function Home() {
       factorFromPreset(3, "solvent"),
       factorFromPreset(4, "base"),
     ]);
+    setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
   }
@@ -861,15 +914,17 @@ export default function Home() {
 
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const validationMessage = validateFactorsForSubmit(factors);
-    if (validationMessage) {
-      setErrorText(validationMessage);
+    const validationResult = validateFactorsForSubmit(factors);
+    setFactorErrors(validationResult.errors);
+    if (validationResult.message) {
+      setErrorText(validationResult.message);
       setStatusText("");
       return;
     }
 
     setIsBusy(true);
     setErrorText("");
+    setFactorErrors({});
     setStatusText("");
     setReport(null);
     setResultHistory([]);
@@ -977,6 +1032,7 @@ export default function Home() {
     setResponseName("Yield");
     setProjectGoal("maximize");
     setFactors(defaultFactors);
+    setFactorErrors({});
     setIsSetupStarted(false);
     setDesignRuns([]);
     setYields({});
@@ -1201,6 +1257,7 @@ export default function Home() {
           levels: factor.levels.join(", "),
         }));
       setFactors(restoredFactors);
+      setFactorErrors({});
       setIsSetupStarted(true);
       const availableSurfaceFactors = continuousFactors(restoredFactors);
       setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? restoredFactors[0]));
@@ -1682,76 +1739,119 @@ export default function Home() {
           <span>low</span>
           <span>high</span>
           <span>levels</span>
-          {factors.map((factor, index) => (
-            <div className="factor-row" key={factor.idx}>
-              <strong>{factorKeys[index]}</strong>
-              <select
-                value={factorPresetId(factor)}
-                onChange={(event) =>
-                  applyFactorPreset(index, event.target.value as FactorPresetId)
-                }
-              >
-                {availableFactorPresetOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={factor.factor_type}
-                onChange={(event) =>
-                  updateFactor(index, "factor_type", event.target.value)
-                }
-              >
-                <option value="continuous">Continuous</option>
-                {!isRangeOnlySetup && <option value="categorical">Categorical</option>}
-              </select>
-              <input
-                value={factor.name_kr}
-                onChange={(event) => updateFactor(index, "name_kr", event.target.value)}
-                required
-              />
-              <input
-                value={factor.name_en}
-                onChange={(event) => updateFactor(index, "name_en", event.target.value)}
-                required
-              />
-              {factor.factor_type === "continuous" ? (
-                <>
+          {factors.map((factor, index) => {
+            const errors = factorErrors[factor.idx] ?? {};
+            return (
+              <div className="factor-row" key={factor.idx}>
+                <strong>{factorKeys[index]}</strong>
+                <div className="factor-cell">
+                  <select
+                    value={factorPresetId(factor)}
+                    onChange={(event) =>
+                      applyFactorPreset(index, event.target.value as FactorPresetId)
+                    }
+                  >
+                    {availableFactorPresetOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="factor-cell">
+                  <select
+                    value={factor.factor_type}
+                    onChange={(event) =>
+                      updateFactor(index, "factor_type", event.target.value)
+                    }
+                  >
+                    <option value="continuous">Continuous</option>
+                    {!isRangeOnlySetup && <option value="categorical">Categorical</option>}
+                  </select>
+                </div>
+                <div className="factor-cell">
                   <input
-                    value={factor.unit}
-                    onChange={(event) => updateFactor(index, "unit", event.target.value)}
+                    className={errors.name_kr ? "invalid-input" : ""}
+                    value={factor.name_kr}
+                    onChange={(event) => updateFactor(index, "name_kr", event.target.value)}
+                    aria-invalid={Boolean(errors.name_kr)}
                     required
                   />
+                  {errors.name_kr && <small className="field-error">{errors.name_kr}</small>}
+                </div>
+                <div className="factor-cell">
                   <input
-                    className="numeric-input"
-                    value={factor.low}
-                    onChange={(event) => updateFactor(index, "low", event.target.value)}
+                    className={errors.name_en ? "invalid-input" : ""}
+                    value={factor.name_en}
+                    onChange={(event) => updateFactor(index, "name_en", event.target.value)}
+                    aria-invalid={Boolean(errors.name_en)}
                     required
                   />
-                  <input
-                    className="numeric-input"
-                    value={factor.high}
-                    onChange={(event) => updateFactor(index, "high", event.target.value)}
-                    required
-                  />
-                  <span className="factor-placeholder">-</span>
-                </>
-              ) : (
-                <>
-                  <span className="factor-placeholder">-</span>
-                  <span className="factor-placeholder">-</span>
-                  <span className="factor-placeholder">-</span>
-                  <input
-                    value={factor.levels}
-                    onChange={(event) => updateFactor(index, "levels", event.target.value)}
-                    placeholder="THF, Toluene"
-                    required
-                  />
-                </>
-              )}
-            </div>
-          ))}
+                  {errors.name_en && <small className="field-error">{errors.name_en}</small>}
+                </div>
+                {factor.factor_type === "continuous" ? (
+                  <>
+                    <div className="factor-cell">
+                      <input
+                        className={errors.unit ? "invalid-input" : ""}
+                        value={factor.unit}
+                        onChange={(event) => updateFactor(index, "unit", event.target.value)}
+                        aria-invalid={Boolean(errors.unit)}
+                        required
+                      />
+                      {errors.unit && <small className="field-error">{errors.unit}</small>}
+                    </div>
+                    <div className="factor-cell">
+                      <input
+                        className={errors.low ? "numeric-input invalid-input" : "numeric-input"}
+                        value={factor.low}
+                        onChange={(event) => updateFactor(index, "low", event.target.value)}
+                        aria-invalid={Boolean(errors.low)}
+                        required
+                      />
+                      {errors.low && <small className="field-error">{errors.low}</small>}
+                    </div>
+                    <div className="factor-cell">
+                      <input
+                        className={errors.high ? "numeric-input invalid-input" : "numeric-input"}
+                        value={factor.high}
+                        onChange={(event) => updateFactor(index, "high", event.target.value)}
+                        aria-invalid={Boolean(errors.high)}
+                        required
+                      />
+                      {errors.high && <small className="field-error">{errors.high}</small>}
+                    </div>
+                    <div className="factor-cell">
+                      <span className="factor-placeholder">-</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="factor-cell">
+                      <span className="factor-placeholder">-</span>
+                    </div>
+                    <div className="factor-cell">
+                      <span className="factor-placeholder">-</span>
+                    </div>
+                    <div className="factor-cell">
+                      <span className="factor-placeholder">-</span>
+                    </div>
+                    <div className="factor-cell">
+                      <input
+                        className={errors.levels ? "invalid-input" : ""}
+                        value={factor.levels}
+                        onChange={(event) => updateFactor(index, "levels", event.target.value)}
+                        placeholder="THF, Toluene"
+                        aria-invalid={Boolean(errors.levels)}
+                        required
+                      />
+                      {errors.levels && <small className="field-error">{errors.levels}</small>}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </form>
       )}
