@@ -467,6 +467,25 @@ select:focus {
   display: block;
 }
 
+.heading-with-help,
+.label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heading-with-help {
+  flex-wrap: wrap;
+}
+
+.term-help {
+  vertical-align: middle;
+}
+
+.term-help [role="tooltip"] {
+  font-weight: 600;
+}
+
 .guide-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

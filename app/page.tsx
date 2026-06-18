@@ -637,6 +637,22 @@ function formatConditionValue(condition: Recommendation["conditions"][string]) {
   return condition.unit ? `${displayValue} ${condition.unit}` : displayValue;
 }
 
+function HelpTip({ label, children }: { label: string; children: string }) {
+  return (
+    <span className="help-popover term-help">
+      <button
+        type="button"
+        className="help-popover-button"
+        aria-label={label}
+        onClick={(event) => event.stopPropagation()}
+      >
+        ?
+      </button>
+      <span role="tooltip">{children}</span>
+    </span>
+  );
+}
+
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -1750,7 +1766,12 @@ export default function Home() {
             onChange={(event) => setIncludeCenterPoints(event.target.checked)}
             disabled={!hasContinuousFactor}
           />
-          <span>Center point 3회 추가</span>
+          <span className="label-with-help">
+            Center point 3회 추가
+            <HelpTip label="Center point 설명">
+              모든 범위 조건을 중간값으로 맞춘 확인 실험입니다. 예를 들어 온도 60-90 °C라면 75 °C 조건을 반복해, 결과가 직선적인 경향인지 휘어진 경향인지 확인합니다.
+            </HelpTip>
+          </span>
         </label>
 
         <div className="factor-question">
@@ -2135,7 +2156,12 @@ export default function Home() {
             </div>
 
             <div className="stats-card">
-              <h3>Curvature</h3>
+              <h3 className="heading-with-help">
+                Curvature
+                <HelpTip label="Curvature 설명">
+                  조건을 조금씩 바꿀 때 결과가 직선처럼 변하는지, 어느 지점부터 꺾이거나 휘어지는지 보는 신호입니다. Center point 결과가 있으면 더 잘 판단할 수 있습니다.
+                </HelpTip>
+              </h3>
               <p>{report.curvature.message}</p>
               {report.curvature.available && (
                 <div className="stats-grid">
@@ -2148,7 +2174,12 @@ export default function Home() {
             </div>
 
             <div className="anova-card">
-              <h3>ANOVA</h3>
+              <h3 className="heading-with-help">
+                ANOVA
+                <HelpTip label="ANOVA 설명">
+                  각 조건이 결과 차이에 얼마나 의미 있게 기여했는지 보는 간단한 통계 요약입니다. p-value가 작을수록 우연보다는 실제 영향일 가능성이 높다고 해석합니다.
+                </HelpTip>
+              </h3>
               <div className="table-scroll">
                 <table>
                   <thead>
@@ -2214,7 +2245,12 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Visualization</span>
-              <h2>Main Effect Analysis</h2>
+              <h2 className="heading-with-help">
+                Main Effect Analysis
+                <HelpTip label="Main Effect Analysis 설명">
+                  각 조건을 낮은 값에서 높은 값으로 바꿨을 때 수율이 평균적으로 얼마나 달라졌는지 보여줍니다. 막대가 클수록 영향이 큰 조건입니다.
+                </HelpTip>
+              </h2>
             </div>
           </div>
 
@@ -2272,7 +2308,12 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Visualization</span>
-              <h2>Pareto Chart</h2>
+              <h2 className="heading-with-help">
+                Pareto Chart
+                <HelpTip label="Pareto Chart 설명">
+                  영향이 큰 조건부터 순서대로 정렬한 그래프입니다. 어떤 조건부터 집중해서 최적화할지 빠르게 고를 때 사용합니다.
+                </HelpTip>
+              </h2>
             </div>
           </div>
 
@@ -2313,7 +2354,12 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Visualization</span>
-              <h2>Yield Trend</h2>
+              <h2 className="heading-with-help">
+                Yield Trend
+                <HelpTip label="Yield Trend 설명">
+                  Run 번호별 입력한 수율을 선으로 연결한 그래프입니다. 특정 실험에서 결과가 튀는지, 전체 흐름이 어떤지 빠르게 확인합니다.
+                </HelpTip>
+              </h2>
             </div>
           </div>
 
@@ -2359,7 +2405,12 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>RSM MVP</span>
-              <h2>Contour Plot</h2>
+              <h2 className="heading-with-help">
+                Contour Plot
+                <HelpTip label="Contour Plot 설명">
+                  두 조건을 동시에 바꿨을 때 예상 수율이 어떻게 달라지는지 색으로 보여주는 지도입니다. 진한 영역은 더 높은 수율이 예상되는 조건입니다.
+                </HelpTip>
+              </h2>
             </div>
             <button
               type="button"
