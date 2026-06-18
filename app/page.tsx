@@ -970,10 +970,26 @@ export default function Home() {
     }
   }
 
-  async function handleDeleteProject() {
-    if (!project) return;
+  function resetProjectState() {
+    setProject(null);
+    setProjectName("Suzuki coupling optimization");
+    setProjectSlogan("감이 아니라 근거로 실험하세요.");
+    setResponseName("Yield");
+    setProjectGoal("maximize");
+    setFactors(defaultFactors);
+    setIsSetupStarted(false);
+    setDesignRuns([]);
+    setYields({});
+    setReport(null);
+    setResultHistory([]);
+    setExpandedHistoryRuns({});
+    setSurfaceData(null);
+    setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+  }
+
+  async function handleDeleteProjectById(projectId: number, projectTitle: string) {
     const shouldDelete = window.confirm(
-      `Delete project "${project.name}"? This will also delete factors, design runs, and results.`,
+      `Delete project "${projectTitle}"? This will also delete factors, design runs, and results.`,
     );
     if (!shouldDelete) return;
 
@@ -983,23 +999,12 @@ export default function Home() {
 
     try {
       await apiRequest<{ project_id: number; deleted: boolean }>(
-        `/api/projects/${project.id}/`,
+        `/api/projects/${projectId}/`,
         { method: "DELETE" },
       );
-      setProject(null);
-      setProjectName("Suzuki coupling optimization");
-      setProjectSlogan("감이 아니라 근거로 실험하세요.");
-      setResponseName("Yield");
-      setProjectGoal("maximize");
-      setFactors(defaultFactors);
-      setIsSetupStarted(false);
-      setDesignRuns([]);
-      setYields({});
-      setReport(null);
-      setResultHistory([]);
-      setExpandedHistoryRuns({});
-      setSurfaceData(null);
-      setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+      if (project?.id === projectId) {
+        resetProjectState();
+      }
       setStatusText("Project deleted.");
       await loadProjects();
     } catch (error) {
@@ -1007,6 +1012,11 @@ export default function Home() {
     } finally {
       setIsBusy(false);
     }
+  }
+
+  async function handleDeleteProject() {
+    if (!project) return;
+    await handleDeleteProjectById(project.id, project.name);
   }
 
   async function handleSubmitResults() {
@@ -1364,12 +1374,9 @@ export default function Home() {
         ) : (
           <div className="project-list">
             {projectList.map((item) => (
-              <button
+              <article
                 className={project?.id === item.project_id ? "project-item active" : "project-item"}
                 key={item.project_id}
-                type="button"
-                onClick={() => void handleLoadProject(item.project_id)}
-                disabled={isBusy}
               >
                 <span>
                   <strong>{item.name}</strong>
@@ -1377,7 +1384,25 @@ export default function Home() {
                 </span>
                 <em>{item.factor_count} factors</em>
                 <em>{item.result_count}/{item.run_budget} {item.response_name}</em>
-              </button>
+                <div className="project-actions">
+                  <button
+                    className="secondary-button compact-button"
+                    type="button"
+                    onClick={() => void handleLoadProject(item.project_id)}
+                    disabled={isBusy}
+                  >
+                    Open/Edit
+                  </button>
+                  <button
+                    className="danger-button compact-button"
+                    type="button"
+                    onClick={() => void handleDeleteProjectById(item.project_id, item.name)}
+                    disabled={isBusy}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
         )}
