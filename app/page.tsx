@@ -663,6 +663,7 @@ export default function Home() {
   const [responseName, setResponseName] = useState("Yield");
   const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
+  const [isIntroComplete, setIsIntroComplete] = useState(false);
   const [isSetupStarted, setIsSetupStarted] = useState(false);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -840,6 +841,7 @@ export default function Home() {
       setProjectGoal("maximize");
       setFactors(defaultFactors);
       setFactorErrors({});
+      setIsIntroComplete(false);
       setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
@@ -1090,6 +1092,7 @@ export default function Home() {
     setProjectGoal("maximize");
     setFactors(defaultFactors);
     setFactorErrors({});
+    setIsIntroComplete(false);
     setIsSetupStarted(false);
     setDesignRuns([]);
     setYields({});
@@ -1323,6 +1326,7 @@ export default function Home() {
         }));
       setFactors(restoredFactors);
       setFactorErrors({});
+      setIsIntroComplete(true);
       setIsSetupStarted(true);
       const availableSurfaceFactors = continuousFactors(restoredFactors);
       setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? restoredFactors[0]));
@@ -1538,21 +1542,47 @@ export default function Home() {
         </div>
       )}
 
-      {!isSetupStarted && (
+      {!isIntroComplete && (
         <section className="card setup-start-card">
           <div className="card-heading">
             <div>
-              <span>Step 1</span>
-              <h2>먼저, 바꿔볼 조건을 정합니다</h2>
+              <span>Start</span>
+              <h2>실험 조건을 조금 더 똑똑하게 고르는 방법입니다</h2>
             </div>
           </div>
 
           <div className="guide-intro">
             <p>
-              Coreacta는 선택한 조건들을 조합해 먼저 해볼 8개 실험표를 만듭니다.
-              지금은 온도, 시간, 용매처럼 결과에 영향을 줄 것 같은 조건 4개만
-              고르면 됩니다.
+              Coreacta는 연구자가 바꿔볼 조건을 고르면, 먼저 해볼 8개의 실험
+              조건표를 자동으로 만듭니다. 모든 조합을 다 해보기 전에 어떤 조건이
+              결과에 큰 영향을 주는지 빠르게 확인하기 위한 시작점입니다.
             </p>
+          </div>
+
+          <div className="guide-note">
+            <strong>첫 단계에서 할 일</strong>
+            <p>
+              온도, 시간, 용매처럼 결과에 영향을 줄 것 같은 조건 4개를 고릅니다.
+              자세한 값은 다음 화면에서 하나씩 입력합니다.
+            </p>
+          </div>
+
+          <div className="setup-start-footer">
+            <p>설명을 확인했으면, 먼저 바꿔볼 조건을 선택합니다.</p>
+            <button type="button" onClick={() => setIsIntroComplete(true)}>
+              시작하기
+            </button>
+          </div>
+        </section>
+      )}
+
+      {isIntroComplete && !isSetupStarted && (
+        <section className="card setup-start-card">
+          <div className="card-heading">
+            <div>
+              <span>Step 1</span>
+              <h2>바꿔볼 조건 4개를 골라주세요</h2>
+            </div>
           </div>
 
           <div className="section-label">
