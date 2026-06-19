@@ -1543,39 +1543,48 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Start Here</span>
-              <h2>어떤 조건을 바꿔볼지 먼저 정해볼게요</h2>
+              <h2>처음이라도 괜찮습니다. 바꿔볼 조건부터 같이 정해볼게요.</h2>
             </div>
           </div>
 
           <div className="guide-intro">
             <p>
-              실험설계(DOE)를 처음 사용해도 괜찮습니다. 온도, 시간, 용매처럼
-              수율에 영향을 줄 수 있는 조건 4개를 고르면 Coreacta가 8개의
-              실험 조합을 자동으로 만들어줍니다.
+              지금 할 일은 어렵지 않습니다. 온도, 시간, 용매처럼 결과에 영향을
+              줄 것 같은 조건 4개를 고르면, Coreacta가 먼저 해볼 8개의 실험
+              조합을 만들어줍니다.
             </p>
           </div>
 
           <div className="doe-summary">
             <div>
-              <strong>무엇을 해주는 방식인가요?</strong>
+              <strong>왜 8개만 하나요?</strong>
               <p>
-                모든 조합을 다 해보는 대신, 중요한 경향을 빠르게 보기 위해
-                8개 실험만 먼저 제안합니다.
+                가능한 모든 조합을 다 하기 전에, 어떤 조건이 결과를 크게
+                바꾸는지 빠르게 감을 잡기 위한 첫 탐색입니다.
               </p>
             </div>
             <div>
-              <strong>지금 필요한 입력은 {factors.length}개 변수입니다</strong>
+              <strong>지금은 조건 {factors.length}개만 고르면 됩니다</strong>
               <p>
-                범위 조건은 낮은 값과 높은 값을 입력하고, 후보 조건은 서로
-                비교할 후보 2개를 입력하면 됩니다.
+                자세한 숫자나 후보 이름은 다음 화면에서 입력합니다. 여기서는
+                어떤 조건을 바꿔볼지만 먼저 고르면 됩니다.
               </p>
             </div>
           </div>
 
           <div className="guide-steps">
             <span className="active">1. 바꿔볼 변수 4개 선택</span>
-            <span>2. 범위 또는 비교 후보 입력</span>
-            <span>3. 8개 실험 조건 생성</span>
+            <span>2. 각 조건의 값 입력</span>
+            <span>3. 실험표 자동 생성</span>
+          </div>
+
+          <div className="guide-note">
+            <strong>어떤 걸 고르면 좋을까요?</strong>
+            <p>
+              처음이면 <b>범위 조건만 사용</b>을 선택해도 충분합니다. 용매나
+              염기처럼 두 후보를 비교하고 싶을 때만 <b>후보 조건</b>을 함께
+              사용하세요.
+            </p>
           </div>
 
           <div className="setup-choice-grid">
@@ -1639,6 +1648,11 @@ export default function Home() {
                 </span>
               </span>
             </div>
+          </div>
+
+          <div className="section-label">
+            <strong>바꿔볼 조건 4개를 골라주세요</strong>
+            <span>기본값을 그대로 두고 시작해도 됩니다.</span>
           </div>
 
           <div className="factor-picker-list">

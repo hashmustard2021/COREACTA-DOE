@@ -332,6 +332,29 @@ select:focus {
   line-height: 1.7;
 }
 
+.guide-note {
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  padding: 14px;
+}
+
+.guide-note strong,
+.section-label strong {
+  display: block;
+  color: var(--accent-strong);
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.guide-note p,
+.section-label span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .doe-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -364,6 +387,10 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.section-label {
+  display: block;
 }
 
 .choice-with-help {
