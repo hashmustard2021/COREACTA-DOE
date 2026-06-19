@@ -1543,13 +1543,21 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Step 1</span>
-              <h2>바꿔볼 조건 4개를 골라주세요</h2>
+              <h2>먼저, 바꿔볼 조건을 정합니다</h2>
             </div>
           </div>
 
+          <div className="guide-intro">
+            <p>
+              Coreacta는 선택한 조건들을 조합해 먼저 해볼 8개 실험표를 만듭니다.
+              지금은 온도, 시간, 용매처럼 결과에 영향을 줄 것 같은 조건 4개만
+              고르면 됩니다.
+            </p>
+          </div>
+
           <div className="section-label">
-            <strong>결과에 영향을 줄 것 같은 조건을 선택하세요.</strong>
-            <span>잘 모르겠다면 기본값 그대로 다음으로 넘어가도 됩니다.</span>
+            <strong>어떤 조건을 바꿔볼까요?</strong>
+            <span>잘 모르겠다면 기본값 그대로 두고 다음 단계로 넘어가도 됩니다.</span>
           </div>
 
           <div className="factor-picker-list">
