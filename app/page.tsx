@@ -1543,98 +1543,13 @@ export default function Home() {
           <div className="card-heading">
             <div>
               <span>Step 1</span>
-              <h2>어떤 조건을 바꿔볼까요?</h2>
-            </div>
-          </div>
-
-          <div className="guide-intro">
-            <p>
-              먼저 결과에 영향을 줄 것 같은 조건 4개만 고르면 됩니다. 자세한
-              값은 다음 단계에서 하나씩 입력합니다.
-            </p>
-          </div>
-
-          <div className="guide-steps">
-            <span className="active">1. 바꿔볼 변수 4개 선택</span>
-            <span>2. 각 조건의 값 입력</span>
-            <span>3. 실험표 자동 생성</span>
-          </div>
-
-          <div className="guide-note">
-            <strong>처음이면 이렇게 시작하세요</strong>
-            <p>
-              온도, 시간, 농도처럼 숫자로 조절하는 조건만 있다면
-              <b> 범위 조건만 사용</b>을 고르세요. 용매나 염기처럼 두 후보를
-              비교하려면 <b>후보 조건</b>을 함께 사용하세요.
-            </p>
-          </div>
-
-          <div className="setup-choice-grid">
-            <div
-              className={isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}
-              role="button"
-              tabIndex={0}
-              onClick={applyDefaultContinuousFactors}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  applyDefaultContinuousFactors();
-                }
-              }}
-            >
-              <span className="choice-button">
-                범위 조건만 사용
-              </span>
-              <span className="help-popover">
-                <button
-                  type="button"
-                  className="help-popover-button"
-                  aria-label="범위 조건 예시"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  ?
-                </button>
-                <span role="tooltip">
-                  온도 60-90 °C, 시간 1-4 h처럼 낮은 값과 높은 값을 정해
-                  범위 안에서 바꿔보는 조건입니다.
-                </span>
-              </span>
-            </div>
-            <div
-              className={!isRangeOnlySetup ? "choice-with-help active" : "choice-with-help"}
-              role="button"
-              tabIndex={0}
-              onClick={applyMixedExampleFactors}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  applyMixedExampleFactors();
-                }
-              }}
-            >
-              <span className="choice-button">
-                범위 조건 + 후보 조건 사용
-              </span>
-              <span className="help-popover">
-                <button
-                  type="button"
-                  className="help-popover-button"
-                  aria-label="후보 조건 예시"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  ?
-                </button>
-                <span role="tooltip">
-                  온도처럼 범위를 바꾸는 조건에 더해, 용매 THF vs Toluene이나
-                  염기 K2CO3 vs Cs2CO3처럼 후보 2개를 비교합니다.
-                </span>
-              </span>
+              <h2>바꿔볼 조건 4개를 골라주세요</h2>
             </div>
           </div>
 
           <div className="section-label">
-            <strong>바꿔볼 조건 4개를 골라주세요</strong>
-            <span>기본값을 그대로 두고 시작해도 됩니다.</span>
+            <strong>결과에 영향을 줄 것 같은 조건을 선택하세요.</strong>
+            <span>잘 모르겠다면 기본값 그대로 다음으로 넘어가도 됩니다.</span>
           </div>
 
           <div className="factor-picker-list">
@@ -1649,7 +1564,7 @@ export default function Home() {
                     applyFactorPreset(index, event.target.value as FactorPresetId)
                   }
                 >
-                  {availableFactorPresetOptions.map((option) => (
+                  {factorPresetOptions.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.label} · {option.description}
                     </option>
@@ -1665,7 +1580,7 @@ export default function Home() {
               후보 조건 {categoricalFactorCount}개
             </p>
             <button type="button" onClick={() => setIsSetupStarted(true)}>
-              선택한 변수로 입력 시작
+              다음: 값 입력
             </button>
           </div>
         </section>
