@@ -1542,34 +1542,16 @@ export default function Home() {
         <section className="card setup-start-card">
           <div className="card-heading">
             <div>
-              <span>Start Here</span>
-              <h2>처음이라도 괜찮습니다. 바꿔볼 조건부터 같이 정해볼게요.</h2>
+              <span>Step 1</span>
+              <h2>어떤 조건을 바꿔볼까요?</h2>
             </div>
           </div>
 
           <div className="guide-intro">
             <p>
-              지금 할 일은 어렵지 않습니다. 온도, 시간, 용매처럼 결과에 영향을
-              줄 것 같은 조건 4개를 고르면, Coreacta가 먼저 해볼 8개의 실험
-              조합을 만들어줍니다.
+              먼저 결과에 영향을 줄 것 같은 조건 4개만 고르면 됩니다. 자세한
+              값은 다음 단계에서 하나씩 입력합니다.
             </p>
-          </div>
-
-          <div className="doe-summary">
-            <div>
-              <strong>왜 8개만 하나요?</strong>
-              <p>
-                가능한 모든 조합을 다 하기 전에, 어떤 조건이 결과를 크게
-                바꾸는지 빠르게 감을 잡기 위한 첫 탐색입니다.
-              </p>
-            </div>
-            <div>
-              <strong>지금은 조건 {factors.length}개만 고르면 됩니다</strong>
-              <p>
-                자세한 숫자나 후보 이름은 다음 화면에서 입력합니다. 여기서는
-                어떤 조건을 바꿔볼지만 먼저 고르면 됩니다.
-              </p>
-            </div>
           </div>
 
           <div className="guide-steps">
@@ -1579,11 +1561,11 @@ export default function Home() {
           </div>
 
           <div className="guide-note">
-            <strong>어떤 걸 고르면 좋을까요?</strong>
+            <strong>처음이면 이렇게 시작하세요</strong>
             <p>
-              처음이면 <b>범위 조건만 사용</b>을 선택해도 충분합니다. 용매나
-              염기처럼 두 후보를 비교하고 싶을 때만 <b>후보 조건</b>을 함께
-              사용하세요.
+              온도, 시간, 농도처럼 숫자로 조절하는 조건만 있다면
+              <b> 범위 조건만 사용</b>을 고르세요. 용매나 염기처럼 두 후보를
+              비교하려면 <b>후보 조건</b>을 함께 사용하세요.
             </p>
           </div>
 
