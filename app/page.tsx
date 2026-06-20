@@ -548,10 +548,10 @@ function validateFactorsForSubmit(factors: FactorInput[]) {
         addError(factor.idx, "unit", "단위를 입력해주세요. 예: °C, h, mol%");
       }
       if (!factor.low.trim()) {
-        addError(factor.idx, "low", "낮은 값을 입력해주세요.");
+        addError(factor.idx, "low", "최소값을 입력해주세요.");
       }
       if (!factor.high.trim()) {
-        addError(factor.idx, "high", "높은 값을 입력해주세요.");
+        addError(factor.idx, "high", "최대값을 입력해주세요.");
       }
       if (factor.low.trim() && !Number.isFinite(low)) {
         addError(factor.idx, "low", "숫자로 입력해주세요. 예: 60");
@@ -560,8 +560,8 @@ function validateFactorsForSubmit(factors: FactorInput[]) {
         addError(factor.idx, "high", "숫자로 입력해주세요. 예: 90");
       }
       if (Number.isFinite(low) && Number.isFinite(high) && low >= high) {
-        addError(factor.idx, "low", "낮은 값은 높은 값보다 작아야 합니다.");
-        addError(factor.idx, "high", "높은 값은 낮은 값보다 커야 합니다.");
+        addError(factor.idx, "low", "최소값은 최대값보다 작아야 합니다.");
+        addError(factor.idx, "high", "최대값은 최소값보다 커야 합니다.");
       }
       continue;
     }
@@ -660,7 +660,7 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [projectName, setProjectName] = useState("Suzuki coupling optimization");
   const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
-  const [responseName, setResponseName] = useState("Yield");
+  const [responseName, setResponseName] = useState("Result");
   const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [isIntroComplete, setIsIntroComplete] = useState(false);
@@ -837,7 +837,7 @@ export default function Home() {
       setProject(null);
       setProjectName("Suzuki coupling optimization");
       setProjectSlogan("감이 아니라 근거로 실험하세요.");
-      setResponseName("Yield");
+      setResponseName("Result");
       setProjectGoal("maximize");
       setFactors(defaultFactors);
       setFactorErrors({});
@@ -1088,7 +1088,7 @@ export default function Home() {
     setProject(null);
     setProjectName("Suzuki coupling optimization");
     setProjectSlogan("감이 아니라 근거로 실험하세요.");
-    setResponseName("Yield");
+    setResponseName("Result");
     setProjectGoal("maximize");
     setFactors(defaultFactors);
     setFactorErrors({});
@@ -1311,7 +1311,7 @@ export default function Home() {
       setProject(detail.project);
       setProjectName(detail.project.name);
       setProjectSlogan(detail.project.slogan || "감이 아니라 근거로 실험하세요.");
-      setResponseName(detail.project.response_name || "Yield");
+      setResponseName(detail.project.response_name || "Result");
       setProjectGoal(normalizeGoal(detail.project.goal));
       setIncludeCenterPoints(Boolean(detail.project.include_center_points));
       const restoredFactors = detail.factors.map((factor) => ({
@@ -1630,8 +1630,8 @@ export default function Home() {
       <form className="card setup-card" onSubmit={handleGenerateDesign}>
         <div className="card-heading">
           <div>
-            <span>Project Setup</span>
-            <h2>Reaction and factors</h2>
+            <span>실험 설정</span>
+            <h2>실험 조건과 측정 결과</h2>
           </div>
           <div className="button-group">
             {project && (
@@ -1667,13 +1667,30 @@ export default function Home() {
             )}
             <button type="submit" disabled={isBusy}>
               <Play size={16} />
-              {isBusy ? "Working..." : "Generate Design"}
+              {isBusy ? "생성 중..." : "실험표 생성"}
             </button>
           </div>
         </div>
 
+        <ol className="setup-flow" aria-label="실험 설정 순서">
+          <li>
+            <strong>1단계: 바꿔볼 조건 입력</strong>
+            <p>결과에 영향을 줄 것 같은 조건을 입력하세요.</p>
+            <small>예: 온도, 시간, 압력, 농도, 속도 등</small>
+          </li>
+          <li>
+            <strong>2단계: 측정할 결과 입력</strong>
+            <p>실험 후 비교할 결과값을 정하세요.</p>
+            <small>예: 수율, 휘도, 점도, 용량, 접착력, 저항 등</small>
+          </li>
+          <li>
+            <strong>3단계: 실험표 생성</strong>
+            <p>Coreacta가 먼저 수행할 실험 조합을 제안합니다.</p>
+          </li>
+        </ol>
+
         <label className="field project-name">
-          <span>Project name</span>
+          <span>프로젝트명</span>
           <input
             value={projectName}
             onChange={(event) => setProjectName(event.target.value)}
@@ -1683,7 +1700,7 @@ export default function Home() {
 
         <div className="project-meta-grid">
           <label className="field">
-            <span>Slogan</span>
+            <span>한 줄 설명</span>
             <input
               value={projectSlogan}
               onChange={(event) => setProjectSlogan(event.target.value)}
@@ -1691,21 +1708,21 @@ export default function Home() {
             />
           </label>
           <label className="field">
-            <span>Response name</span>
+            <span>측정 결과</span>
             <input
               value={responseName}
               onChange={(event) => setResponseName(event.target.value)}
-              placeholder="Yield"
+              placeholder="수율, 휘도, 점도, 용량 등"
             />
           </label>
           <label className="field">
-            <span>Goal</span>
+            <span>결과 목표</span>
             <select
               value={projectGoal}
               onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}
             >
-              <option value="maximize">maximize</option>
-              <option value="minimize">minimize</option>
+              <option value="maximize">크게 만들기 (maximize)</option>
+              <option value="minimize">작게 만들기 (minimize)</option>
             </select>
           </label>
         </div>
@@ -1727,10 +1744,10 @@ export default function Home() {
 
         <div className="factor-question">
           <div>
-            <span>1. 설정할 변수를 먼저 선택하세요</span>
+            <span>1단계: 실험 조건</span>
             <p>
-              각 슬롯에서 변수 템플릿을 고르면 type과 입력칸이 자동으로 바뀝니다.
-              직접 수정이 필요하면 Custom 상태에서 아래 값을 편집하세요.
+              결과에 영향을 줄 것 같은 조건을 확인하고 필요한 값을 입력하세요.
+              조건 종류에 따라 입력할 칸이 자동으로 바뀝니다.
             </p>
           </div>
           <button
@@ -1739,7 +1756,7 @@ export default function Home() {
             onClick={applyDefaultContinuousFactors}
             disabled={isBusy}
           >
-            기본 continuous 4개로 초기화
+            기본 숫자 범위형 4개로 초기화
           </button>
           <button
             className="secondary-button"
@@ -1747,20 +1764,20 @@ export default function Home() {
             onClick={() => setIsSetupStarted(false)}
             disabled={isBusy}
           >
-            변수 선택으로 돌아가기
+            조건 선택으로 돌아가기
           </button>
         </div>
 
         <div className="factor-grid">
-          <span>Factor</span>
-          <span>variable</span>
-          <span>type</span>
-          <span>name_kr</span>
-          <span>name_en</span>
-          <span>unit</span>
-          <span>low</span>
-          <span>high</span>
-          <span>levels</span>
+          <span>조건</span>
+          <span>조건 선택</span>
+          <span>조건 유형</span>
+          <span>조건명</span>
+          <span>영문명</span>
+          <span>단위</span>
+          <span>최소값</span>
+          <span>최대값</span>
+          <span>선택값</span>
           {factors.map((factor, index) => {
             const errors = factorErrors[factor.idx] ?? {};
             return (
@@ -1787,14 +1804,15 @@ export default function Home() {
                       updateFactor(index, "factor_type", event.target.value)
                     }
                   >
-                    <option value="continuous">Continuous</option>
-                    {!isRangeOnlySetup && <option value="categorical">Categorical</option>}
+                    <option value="continuous">숫자 범위형 (Continuous)</option>
+                    {!isRangeOnlySetup && <option value="categorical">선택형 (Categorical)</option>}
                   </select>
                 </div>
                 <div className="factor-cell">
                   <input
                     className={errors.name_kr ? "invalid-input" : ""}
                     value={factor.name_kr}
+                    placeholder="예: 온도"
                     onChange={(event) => updateFactor(index, "name_kr", event.target.value)}
                     aria-invalid={Boolean(errors.name_kr)}
                     required
@@ -1805,6 +1823,7 @@ export default function Home() {
                   <input
                     className={errors.name_en ? "invalid-input" : ""}
                     value={factor.name_en}
+                    placeholder="예: Temperature"
                     onChange={(event) => updateFactor(index, "name_en", event.target.value)}
                     aria-invalid={Boolean(errors.name_en)}
                     required
@@ -1863,7 +1882,7 @@ export default function Home() {
                         className={errors.levels ? "invalid-input" : ""}
                         value={factor.levels}
                         onChange={(event) => updateFactor(index, "levels", event.target.value)}
-                        placeholder="THF, Toluene"
+                        placeholder="예: A, B"
                         aria-invalid={Boolean(errors.levels)}
                         required
                       />
@@ -1936,8 +1955,8 @@ export default function Home() {
       <section className="card">
         <div className="card-heading">
           <div>
-            <span>Results Input</span>
-            <h2>Yield by run</h2>
+            <span>결과 입력</span>
+            <h2>{responseName || "측정 결과"} 입력</h2>
           </div>
           <div className="button-group">
             <button
@@ -1946,7 +1965,7 @@ export default function Home() {
               disabled={!project || designRuns.length === 0 || isBusy}
             >
               <Send size={16} />
-              Submit Results
+              결과 저장
             </button>
             <button
               className="secondary-button"
@@ -1955,7 +1974,7 @@ export default function Home() {
               disabled={!project || isBusy}
             >
               <RefreshCw size={16} />
-              Refresh Report
+              리포트 새로고침
             </button>
           </div>
         </div>
@@ -1965,7 +1984,7 @@ export default function Home() {
             <thead>
               <tr>
                 <th>Run</th>
-                <th>수율(Yield, %)</th>
+                <th>{responseName || "측정 결과"}</th>
               </tr>
             </thead>
             <tbody>
