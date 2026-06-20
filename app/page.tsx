@@ -17,6 +17,8 @@ import {
   Play,
   RefreshCw,
   Save,
+  ChevronDown,
+  ChevronUp,
   Send,
   Trash2,
 } from "lucide-react";
@@ -678,10 +680,11 @@ export default function Home() {
   const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
   const [isBusy, setIsBusy] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [isProjectListOpen, setIsProjectListOpen] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
   const [surfaceMessage, setSurfaceMessage] = useState(
-    "Update Surface를 눌러 contour plot을 생성하세요.",
+    "예측 그래프 갱신를 눌러 contour plot을 생성하세요.",
   );
   const [surfaceXFactor, setSurfaceXFactor] = useState(factorDisplayName(defaultFactors[0]));
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
@@ -988,7 +991,7 @@ export default function Home() {
     setResultHistory([]);
     setExpandedHistoryRuns({});
     setSurfaceData(null);
-    setSurfaceMessage("결과를 입력한 뒤 Update Surface를 눌러 contour plot을 생성하세요.");
+    setSurfaceMessage("결과를 입력한 뒤 예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
 
     try {
       const createdProject = await apiRequest<Project>("/api/projects/", {
@@ -1101,7 +1104,7 @@ export default function Home() {
     setResultHistory([]);
     setExpandedHistoryRuns({});
     setSurfaceData(null);
-    setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+    setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
   }
 
   async function handleDeleteProjectById(projectId: number, projectTitle: string) {
@@ -1169,7 +1172,7 @@ export default function Home() {
       setReport(nextReport);
       setResultHistory(await loadResultHistory(project.id));
       setSurfaceData(null);
-      setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+      setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
       setStatusText(`${filledRuns.length} result(s) submitted.`);
       void loadProjects();
     } catch (error) {
@@ -1344,8 +1347,8 @@ export default function Home() {
       setSurfaceData(null);
       setSurfaceMessage(
         Object.keys(restoredYields).length > 0
-          ? "Update Surface를 눌러 contour plot을 생성하세요."
-          : "결과를 입력한 뒤 Update Surface를 눌러 contour plot을 생성하세요.",
+          ? "예측 그래프 갱신를 눌러 contour plot을 생성하세요."
+          : "결과를 입력한 뒤 예측 그래프 갱신를 눌러 contour plot을 생성하세요.",
       );
       setStatusText(`Project ${projectId} loaded.`);
     } catch (error) {
@@ -1402,16 +1405,16 @@ export default function Home() {
   return (
     <main className="app-shell">
       {(!currentUser || isIntroComplete) && (
-      <section className="hero-card">
+      <section className={isSetupStarted ? "hero-card workflow-header" : "hero-card"}>
         <div className="hero-copy">
-          <span>Reaction Optimization</span>
+          <span>실험 최적화</span>
           <h1>Coreacta DOE</h1>
           <p>감이 아니라 근거로 실험하세요.</p>
         </div>
         <div className="hero-meta">
           {currentUser ? (
             <>
-              <span>Signed in</span>
+              <span>로그인 사용자</span>
               <strong>{currentUser.username}</strong>
               <button
                 className="secondary-button"
@@ -1419,7 +1422,7 @@ export default function Home() {
                 onClick={() => void handleLogout()}
                 disabled={isBusy}
               >
-                Logout
+                로그아웃
               </button>
             </>
           ) : (
@@ -1481,59 +1484,74 @@ export default function Home() {
       {currentUser && (
         <>
       {isSetupStarted && (
-      <section className="card project-list-card">
-        <div className="card-heading">
+      <section className={isProjectListOpen ? "card project-list-card" : "card project-list-card collapsed"}>
+        <div className="card-heading project-list-heading">
           <div>
-            <span>Project List</span>
-            <h2>Saved DOE projects</h2>
+            <span>프로젝트</span>
+            <h2>저장된 프로젝트 {projectList.length}개</h2>
           </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => void loadProjects()}
-            disabled={isLoadingProjects}
-          >
-            <RefreshCw size={16} />
-            Refresh
-          </button>
+          <div className="button-group">
+            {isProjectListOpen && (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void loadProjects()}
+                disabled={isLoadingProjects}
+              >
+                <RefreshCw size={16} />
+                새로고침
+              </button>
+            )}
+            <button
+              className="secondary-button"
+              type="button"
+              aria-expanded={isProjectListOpen}
+              onClick={() => setIsProjectListOpen((isOpen) => !isOpen)}
+            >
+              {isProjectListOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {isProjectListOpen ? "접기" : "목록 보기"}
+            </button>
+          </div>
         </div>
 
-        {projectList.length === 0 ? (
-          <p className="empty-state">No saved projects yet.</p>
-        ) : (
-          <div className="project-list">
-            {projectList.map((item) => (
-              <article
-                className={project?.id === item.project_id ? "project-item active" : "project-item"}
-                key={item.project_id}
-              >
-                <span>
-                  <strong>{item.name}</strong>
-                  <small>Project {item.project_id}</small>
-                </span>
-                <em>{item.factor_count} factors</em>
-                <em>{item.result_count}/{item.run_budget} {item.response_name}</em>
-                <div className="project-actions">
-                  <button
-                    className="secondary-button compact-button"
-                    type="button"
-                    onClick={() => void handleLoadProject(item.project_id)}
-                    disabled={isBusy}
-                  >
-                    Open/Edit
-                  </button>
-                  <button
-                    className="danger-button compact-button"
-                    type="button"
-                    onClick={() => void handleDeleteProjectById(item.project_id, item.name)}
-                    disabled={isBusy}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
+        {isProjectListOpen && (
+          projectList.length === 0 ? (
+            <p className="empty-state">저장된 프로젝트가 없습니다.</p>
+          ) : (
+            <div className="project-list">
+              {projectList.map((item) => (
+                <article
+                  className={project?.id === item.project_id ? "project-item active" : "project-item"}
+                  key={item.project_id}
+                >
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>프로젝트 {item.project_id}</small>
+                  </span>
+                  <em>조건 {item.factor_count}개</em>
+                  <em>{item.result_count}/{item.run_budget} {item.response_name}</em>
+                  <div className="project-actions">
+                    <button
+                      className="secondary-button compact-button"
+                      type="button"
+                      onClick={() => void handleLoadProject(item.project_id)}
+                      disabled={isBusy}
+                    >
+                      열기/수정
+                    </button>
+                    <button
+                      className="danger-button compact-button"
+                      type="button"
+                      onClick={() => void handleDeleteProjectById(item.project_id, item.name)}
+                      disabled={isBusy}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
         )}
       </section>
       )}
@@ -1633,266 +1651,86 @@ export default function Home() {
             <span>실험 설정</span>
             <h2>실험 조건과 측정 결과</h2>
           </div>
-          <div className="button-group">
-            {project && (
-              <>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => void handleUpdateProject()}
-                  disabled={isBusy}
-                >
-                  <Save size={16} />
-                  Save Project
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => void handleDuplicateProject()}
-                  disabled={isBusy}
-                >
-                  <Copy size={16} />
-                  Duplicate
-                </button>
-                <button
-                  className="danger-button"
-                  type="button"
-                  onClick={() => void handleDeleteProject()}
-                  disabled={isBusy}
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </>
-            )}
-            <button type="submit" disabled={isBusy}>
-              <Play size={16} />
-              {isBusy ? "생성 중..." : "실험표 생성"}
-            </button>
-          </div>
+          {project && (
+            <div className="button-group">
+              <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
+                <Save size={16} /> 프로젝트 저장
+              </button>
+              <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
+                <Copy size={16} /> 복제
+              </button>
+              <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
+                <Trash2 size={16} /> 삭제
+              </button>
+            </div>
+          )}
         </div>
 
         <ol className="setup-flow" aria-label="실험 설정 순서">
-          <li>
-            <strong>1단계: 바꿔볼 조건 입력</strong>
-            <p>결과에 영향을 줄 것 같은 조건을 입력하세요.</p>
-            <small>예: 온도, 시간, 압력, 농도, 속도 등</small>
-          </li>
-          <li>
-            <strong>2단계: 측정할 결과 입력</strong>
-            <p>실험 후 비교할 결과값을 정하세요.</p>
-            <small>예: 수율, 휘도, 점도, 용량, 접착력, 저항 등</small>
-          </li>
-          <li>
-            <strong>3단계: 실험표 생성</strong>
-            <p>Coreacta가 먼저 수행할 실험 조합을 제안합니다.</p>
-          </li>
+          <li><strong>1단계: 바꿔볼 조건 입력</strong><p>결과에 영향을 줄 것 같은 조건을 입력하세요.</p><small>예: 온도, 시간, 압력, 농도, 속도 등</small></li>
+          <li><strong>2단계: 측정할 결과 입력</strong><p>실험 후 비교할 결과값을 정하세요.</p><small>예: 수율, 휘도, 점도, 용량, 접착력, 저항 등</small></li>
+          <li><strong>3단계: 실험표 생성</strong><p>Coreacta가 먼저 수행할 실험 조합을 제안합니다.</p></li>
         </ol>
 
         <label className="field project-name">
           <span>프로젝트명</span>
-          <input
-            value={projectName}
-            onChange={(event) => setProjectName(event.target.value)}
-            required
-          />
+          <input value={projectName} onChange={(event) => setProjectName(event.target.value)} required />
         </label>
 
-        <div className="project-meta-grid">
-          <label className="field">
-            <span>한 줄 설명</span>
-            <input
-              value={projectSlogan}
-              onChange={(event) => setProjectSlogan(event.target.value)}
-              placeholder="감이 아니라 근거로 실험하세요."
-            />
-          </label>
-          <label className="field">
-            <span>측정 결과</span>
-            <input
-              value={responseName}
-              onChange={(event) => setResponseName(event.target.value)}
-              placeholder="수율, 휘도, 점도, 용량 등"
-            />
-          </label>
-          <label className="field">
-            <span>결과 목표</span>
-            <select
-              value={projectGoal}
-              onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}
-            >
-              <option value="maximize">크게 만들기 (maximize)</option>
-              <option value="minimize">작게 만들기 (minimize)</option>
-            </select>
-          </label>
-        </div>
-
-        <label className="center-option">
-          <input
-            type="checkbox"
-            checked={includeCenterPoints && hasContinuousFactor}
-            onChange={(event) => setIncludeCenterPoints(event.target.checked)}
-            disabled={!hasContinuousFactor}
-          />
-          <span className="label-with-help">
-            Center point 3회 추가
-            <HelpTip label="Center point 설명">
-              모든 범위 조건을 중간값으로 맞춘 확인 실험입니다. 예를 들어 온도 60-90 °C라면 75 °C 조건을 반복해, 결과가 직선적인 경향인지 휘어진 경향인지 확인합니다.
-            </HelpTip>
-          </span>
-        </label>
-
-        <div className="factor-question">
-          <div>
-            <span>1단계: 실험 조건</span>
-            <p>
-              결과에 영향을 줄 것 같은 조건을 확인하고 필요한 값을 입력하세요.
-              조건 종류에 따라 입력할 칸이 자동으로 바뀝니다.
-            </p>
+        <div className="setup-section-heading">
+          <div><span>1단계</span><h3>실험 조건</h3><p>각 조건의 종류와 비교할 값을 입력하세요.</p></div>
+          <div className="button-group">
+            <button className="secondary-button" type="button" onClick={applyDefaultContinuousFactors} disabled={isBusy}>기본값으로 초기화</button>
+            <button className="secondary-button" type="button" onClick={() => setIsSetupStarted(false)} disabled={isBusy}>조건 선택으로 돌아가기</button>
           </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={applyDefaultContinuousFactors}
-            disabled={isBusy}
-          >
-            기본 숫자 범위형 4개로 초기화
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => setIsSetupStarted(false)}
-            disabled={isBusy}
-          >
-            조건 선택으로 돌아가기
-          </button>
         </div>
 
         <div className="factor-grid">
-          <span>조건</span>
-          <span>조건 선택</span>
-          <span>조건 유형</span>
-          <span>조건명</span>
-          <span>영문명</span>
-          <span>단위</span>
-          <span>최소값</span>
-          <span>최대값</span>
-          <span>선택값</span>
           {factors.map((factor, index) => {
             const errors = factorErrors[factor.idx] ?? {};
             return (
-              <div className="factor-row" key={factor.idx}>
-                <strong>{factorKeys[index]}</strong>
-                <div className="factor-cell">
-                  <select
-                    value={factorPresetId(factor)}
-                    onChange={(event) =>
-                      applyFactorPreset(index, event.target.value as FactorPresetId)
-                    }
-                  >
-                    {availableFactorPresetOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+              <article className="factor-row" key={factor.idx}>
+                <div className="factor-row-heading">
+                  <strong>조건 {factorKeys[index]}</strong>
+                  <span>{factor.name_kr || "조건명을 입력하세요"}</span>
                 </div>
-                <div className="factor-cell">
-                  <select
-                    value={factor.factor_type}
-                    onChange={(event) =>
-                      updateFactor(index, "factor_type", event.target.value)
-                    }
-                  >
-                    <option value="continuous">숫자 범위형 (Continuous)</option>
-                    {!isRangeOnlySetup && <option value="categorical">선택형 (Categorical)</option>}
-                  </select>
+                <div className="factor-fields">
+                  <label className="factor-cell"><span>조건 선택</span><select value={factorPresetId(factor)} onChange={(event) => applyFactorPreset(index, event.target.value as FactorPresetId)}>{availableFactorPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
+                  <label className="factor-cell"><span>조건 유형</span><select value={factor.factor_type} onChange={(event) => updateFactor(index, "factor_type", event.target.value)}><option value="continuous">숫자 범위형 (Continuous)</option>{!isRangeOnlySetup && <option value="categorical">선택형 (Categorical)</option>}</select></label>
+                  <label className="factor-cell"><span>조건명</span><input className={errors.name_kr ? "invalid-input" : ""} value={factor.name_kr} placeholder="예: 온도" onChange={(event) => updateFactor(index, "name_kr", event.target.value)} aria-invalid={Boolean(errors.name_kr)} required />{errors.name_kr && <small className="field-error">{errors.name_kr}</small>}</label>
+                  <label className="factor-cell"><span>영문명</span><input className={errors.name_en ? "invalid-input" : ""} value={factor.name_en} placeholder="예: Temperature" onChange={(event) => updateFactor(index, "name_en", event.target.value)} aria-invalid={Boolean(errors.name_en)} required />{errors.name_en && <small className="field-error">{errors.name_en}</small>}</label>
+                  {factor.factor_type === "continuous" ? (
+                    <>
+                      <label className="factor-cell"><span>단위</span><input className={errors.unit ? "invalid-input" : ""} value={factor.unit} placeholder="예: °C" onChange={(event) => updateFactor(index, "unit", event.target.value)} aria-invalid={Boolean(errors.unit)} required />{errors.unit && <small className="field-error">{errors.unit}</small>}</label>
+                      <label className="factor-cell"><span>최소값</span><input className={errors.low ? "numeric-input invalid-input" : "numeric-input"} value={factor.low} placeholder="예: 60" onChange={(event) => updateFactor(index, "low", event.target.value)} aria-invalid={Boolean(errors.low)} required />{errors.low && <small className="field-error">{errors.low}</small>}</label>
+                      <label className="factor-cell"><span>최대값</span><input className={errors.high ? "numeric-input invalid-input" : "numeric-input"} value={factor.high} placeholder="예: 90" onChange={(event) => updateFactor(index, "high", event.target.value)} aria-invalid={Boolean(errors.high)} required />{errors.high && <small className="field-error">{errors.high}</small>}</label>
+                    </>
+                  ) : (
+                    <label className="factor-cell factor-levels"><span>선택값 2개</span><input className={errors.levels ? "invalid-input" : ""} value={factor.levels} onChange={(event) => updateFactor(index, "levels", event.target.value)} placeholder="예: A, B" aria-invalid={Boolean(errors.levels)} required />{errors.levels && <small className="field-error">{errors.levels}</small>}</label>
+                  )}
                 </div>
-                <div className="factor-cell">
-                  <input
-                    className={errors.name_kr ? "invalid-input" : ""}
-                    value={factor.name_kr}
-                    placeholder="예: 온도"
-                    onChange={(event) => updateFactor(index, "name_kr", event.target.value)}
-                    aria-invalid={Boolean(errors.name_kr)}
-                    required
-                  />
-                  {errors.name_kr && <small className="field-error">{errors.name_kr}</small>}
-                </div>
-                <div className="factor-cell">
-                  <input
-                    className={errors.name_en ? "invalid-input" : ""}
-                    value={factor.name_en}
-                    placeholder="예: Temperature"
-                    onChange={(event) => updateFactor(index, "name_en", event.target.value)}
-                    aria-invalid={Boolean(errors.name_en)}
-                    required
-                  />
-                  {errors.name_en && <small className="field-error">{errors.name_en}</small>}
-                </div>
-                {factor.factor_type === "continuous" ? (
-                  <>
-                    <div className="factor-cell">
-                      <input
-                        className={errors.unit ? "invalid-input" : ""}
-                        value={factor.unit}
-                        onChange={(event) => updateFactor(index, "unit", event.target.value)}
-                        aria-invalid={Boolean(errors.unit)}
-                        required
-                      />
-                      {errors.unit && <small className="field-error">{errors.unit}</small>}
-                    </div>
-                    <div className="factor-cell">
-                      <input
-                        className={errors.low ? "numeric-input invalid-input" : "numeric-input"}
-                        value={factor.low}
-                        onChange={(event) => updateFactor(index, "low", event.target.value)}
-                        aria-invalid={Boolean(errors.low)}
-                        required
-                      />
-                      {errors.low && <small className="field-error">{errors.low}</small>}
-                    </div>
-                    <div className="factor-cell">
-                      <input
-                        className={errors.high ? "numeric-input invalid-input" : "numeric-input"}
-                        value={factor.high}
-                        onChange={(event) => updateFactor(index, "high", event.target.value)}
-                        aria-invalid={Boolean(errors.high)}
-                        required
-                      />
-                      {errors.high && <small className="field-error">{errors.high}</small>}
-                    </div>
-                    <div className="factor-cell">
-                      <span className="factor-placeholder">-</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="factor-cell">
-                      <span className="factor-placeholder">-</span>
-                    </div>
-                    <div className="factor-cell">
-                      <span className="factor-placeholder">-</span>
-                    </div>
-                    <div className="factor-cell">
-                      <span className="factor-placeholder">-</span>
-                    </div>
-                    <div className="factor-cell">
-                      <input
-                        className={errors.levels ? "invalid-input" : ""}
-                        value={factor.levels}
-                        onChange={(event) => updateFactor(index, "levels", event.target.value)}
-                        placeholder="예: A, B"
-                        aria-invalid={Boolean(errors.levels)}
-                        required
-                      />
-                      {errors.levels && <small className="field-error">{errors.levels}</small>}
-                    </div>
-                  </>
-                )}
-              </div>
+              </article>
             );
           })}
+        </div>
+
+        <div className="setup-section-heading result-section-heading">
+          <div><span>2단계</span><h3>측정 결과</h3><p>실험 후 기록하고 비교할 결과값을 정하세요.</p></div>
+        </div>
+        <div className="project-meta-grid">
+          <label className="field"><span>한 줄 설명</span><input value={projectSlogan} onChange={(event) => setProjectSlogan(event.target.value)} placeholder="감이 아니라 근거로 실험하세요." /></label>
+          <label className="field"><span>측정 결과</span><input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="수율, 휘도, 점도, 용량 등" /></label>
+          <label className="field"><span>결과 목표</span><select value={projectGoal} onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}><option value="maximize">크게 만들기 (maximize)</option><option value="minimize">작게 만들기 (minimize)</option></select></label>
+        </div>
+
+        <label className="center-option">
+          <input type="checkbox" checked={includeCenterPoints && hasContinuousFactor} onChange={(event) => setIncludeCenterPoints(event.target.checked)} disabled={!hasContinuousFactor} />
+          <span className="label-with-help">Center point 3회 추가<HelpTip label="Center point 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
+        </label>
+
+        <div className="setup-submit-row">
+          <div><span>3단계</span><strong>입력이 끝났나요?</strong><p>Coreacta가 먼저 수행할 실험 조합을 만듭니다.</p></div>
+          <button type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
         </div>
       </form>
       )}
@@ -1902,8 +1740,8 @@ export default function Home() {
       <section className="card">
         <div className="card-heading">
           <div>
-            <span>Design Table</span>
-            <h2>{project ? `${project.name} · Project ${project.id}` : "No design yet"}</h2>
+            <span>실험표</span>
+            <h2>{project ? `${project.name} · Project ${project.id}` : "아직 생성된 실험표가 없습니다"}</h2>
           </div>
           <button
             className="secondary-button"
@@ -1931,7 +1769,7 @@ export default function Home() {
             <tbody>
               {designRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>Generate a design to view 8 runs.</td>
+                  <td colSpan={5}>실험표를 생성하면 실험 조합이 표시됩니다.</td>
                 </tr>
               ) : (
                 designRuns.map((run) => (
@@ -1990,7 +1828,7 @@ export default function Home() {
             <tbody>
               {designRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={2}>Generate a design before entering results.</td>
+                  <td colSpan={2}>실험표를 먼저 생성해주세요.</td>
                 </tr>
               ) : (
                 designRuns.map((run, index) => (
@@ -2066,8 +1904,8 @@ export default function Home() {
       <section className="card report-card">
         <div className="card-heading">
           <div>
-            <span>Report</span>
-            <h2>Top drivers and recommended next runs</h2>
+            <span>분석 결과</span>
+            <h2>주요 영향 조건과 다음 실험 추천</h2>
           </div>
           <div className="report-actions">
             <button
@@ -2084,7 +1922,7 @@ export default function Home() {
         </div>
 
         {!report ? (
-          <p className="empty-state">Submit results to calculate the report.</p>
+          <p className="empty-state">결과를 입력하면 분석 결과가 표시됩니다.</p>
         ) : (
           <div className="report-layout">
             <div>
@@ -2214,10 +2052,10 @@ export default function Home() {
         <article className="card chart-card">
           <div className="card-heading">
             <div>
-              <span>Visualization</span>
+              <span>시각화</span>
               <h2 className="heading-with-help">
-                Main Effect Analysis
-                <HelpTip label="Main Effect Analysis 설명">
+                조건별 영향 분석 (Main Effect)
+                <HelpTip label="조건별 영향 분석 (Main Effect) 설명">
                   각 조건을 낮은 값에서 높은 값으로 바꿨을 때 수율이 평균적으로 얼마나 달라졌는지 보여줍니다. 막대가 클수록 영향이 큰 조건입니다.
                 </HelpTip>
               </h2>
@@ -2277,10 +2115,10 @@ export default function Home() {
         <article className="card chart-card">
           <div className="card-heading">
             <div>
-              <span>Visualization</span>
+              <span>시각화</span>
               <h2 className="heading-with-help">
-                Pareto Chart
-                <HelpTip label="Pareto Chart 설명">
+                영향도 순위 (Pareto Chart)
+                <HelpTip label="영향도 순위 (Pareto Chart) 설명">
                   영향이 큰 조건부터 순서대로 정렬한 그래프입니다. 어떤 조건부터 집중해서 최적화할지 빠르게 고를 때 사용합니다.
                 </HelpTip>
               </h2>
@@ -2323,10 +2161,10 @@ export default function Home() {
         <article className="card chart-card">
           <div className="card-heading">
             <div>
-              <span>Visualization</span>
+              <span>시각화</span>
               <h2 className="heading-with-help">
-                Yield Trend
-                <HelpTip label="Yield Trend 설명">
+                결과 추이
+                <HelpTip label="결과 추이 설명">
                   Run 번호별 입력한 수율을 선으로 연결한 그래프입니다. 특정 실험에서 결과가 튀는지, 전체 흐름이 어떤지 빠르게 확인합니다.
                 </HelpTip>
               </h2>
@@ -2374,10 +2212,10 @@ export default function Home() {
         <article className="card chart-card contour-card">
           <div className="card-heading">
             <div>
-              <span>RSM MVP</span>
+              <span>결과 예측</span>
               <h2 className="heading-with-help">
-                Contour Plot
-                <HelpTip label="Contour Plot 설명">
+                조건 조합별 예측 (Contour Plot)
+                <HelpTip label="조건 조합별 예측 (Contour Plot) 설명">
                   두 조건을 동시에 바꿨을 때 예상 수율이 어떻게 달라지는지 색으로 보여주는 지도입니다. 진한 영역은 더 높은 수율이 예상되는 조건입니다.
                 </HelpTip>
               </h2>
@@ -2393,19 +2231,19 @@ export default function Home() {
               }
             >
               <RefreshCw size={16} />
-              Update Surface
+              예측 그래프 갱신
             </button>
           </div>
 
           <div className="surface-controls">
             <label>
-              <span>X factor</span>
+              <span>가로축 조건</span>
               <select
                 value={surfaceXFactor}
                 onChange={(event) => {
                   setSurfaceXFactor(event.target.value);
                   setSurfaceData(null);
-                  setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+                  setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
                 }}
               >
                 {surfaceFactorOptions.map((factor) => (
@@ -2416,13 +2254,13 @@ export default function Home() {
               </select>
             </label>
             <label>
-              <span>Y factor</span>
+              <span>세로축 조건</span>
               <select
                 value={surfaceYFactor}
                 onChange={(event) => {
                   setSurfaceYFactor(event.target.value);
                   setSurfaceData(null);
-                  setSurfaceMessage("Update Surface를 눌러 contour plot을 생성하세요.");
+                  setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
                 }}
               >
                 {surfaceFactorOptions.map((factor) => (
