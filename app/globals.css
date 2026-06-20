@@ -191,6 +191,76 @@ select:focus {
   max-width: 520px;
 }
 
+.welcome-screen {
+  position: relative;
+  display: grid;
+  min-height: calc(100vh - 56px);
+  place-items: center;
+}
+
+.welcome-account {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.welcome-logout {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.welcome-content {
+  display: grid;
+  justify-items: center;
+  width: min(620px, 100%);
+  padding: 64px 20px;
+  text-align: center;
+}
+
+.welcome-content h1 {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 44px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.welcome-slogan {
+  margin: 14px 0 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.welcome-description {
+  margin: 38px 0 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+.welcome-start-button {
+  min-height: 52px;
+  margin-top: 34px;
+  padding: 0 26px;
+  font-size: 16px;
+}
+
+.welcome-content small {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .notice {
   margin-bottom: 14px;
   border: 1px solid #b6ddd4;
@@ -1122,6 +1192,27 @@ tbody tr:last-child td {
 
   .hero-copy h1 {
     font-size: 31px;
+  }
+
+  .welcome-screen {
+    min-height: calc(100vh - 36px);
+  }
+
+  .welcome-content {
+    padding: 76px 0 40px;
+  }
+
+  .welcome-content h1 {
+    font-size: 36px;
+  }
+
+  .welcome-slogan {
+    font-size: 18px;
+  }
+
+  .welcome-description {
+    margin-top: 30px;
+    font-size: 16px;
   }
 
   .card {
