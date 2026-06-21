@@ -1,3 +1,4 @@
+import os
 from io import BytesIO
 from pathlib import Path
 
@@ -12,8 +13,16 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from .services import build_report
 
 
-FONT_NAME = "MalgunGothic"
-FONT_PATH = Path("C:/Windows/Fonts/malgun.ttf")
+FONT_NAME = "CoreactaKorean"
+FONT_PATHS = [
+    Path(path)
+    for path in (
+        os.getenv("COREACTA_PDF_FONT"),
+        "C:/Windows/Fonts/malgun.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    )
+    if path
+]
 
 
 def build_project_report_pdf(project):
@@ -156,14 +165,19 @@ def build_project_report_pdf(project):
     return buffer.getvalue()
 
 
+def korean_font_path():
+    return next((path for path in FONT_PATHS if path.exists()), None)
+
+
 def register_korean_font():
-    if FONT_NAME not in pdfmetrics.getRegisteredFontNames() and FONT_PATH.exists():
-        pdfmetrics.registerFont(TTFont(FONT_NAME, str(FONT_PATH)))
+    font_path = korean_font_path()
+    if font_path and FONT_NAME not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(FONT_NAME, str(font_path)))
 
 
 def build_styles():
     styles = getSampleStyleSheet()
-    base_font = FONT_NAME if FONT_PATH.exists() else "Helvetica"
+    base_font = FONT_NAME if korean_font_path() else "Helvetica"
 
     return {
         "Title": ParagraphStyle(
@@ -211,7 +225,12 @@ def basic_table(rows, repeat_rows=0):
     table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, -1), FONT_NAME if FONT_PATH.exists() else "Helvetica"),
+                (
+                    "FONTNAME",
+                    (0, 0),
+                    (-1, -1),
+                    FONT_NAME if korean_font_path() else "Helvetica",
+                ),
                 ("FONTSIZE", (0, 0), (-1, -1), 7),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e7f4f1")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#115e59")),

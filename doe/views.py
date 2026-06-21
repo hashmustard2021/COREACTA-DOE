@@ -31,6 +31,11 @@ from .services import (
 )
 
 
+@api_view(["GET"])
+def health(request):
+    return api_success({"status": "ok"})
+
+
 @ensure_csrf_cookie
 @api_view(["GET"])
 def auth_csrf(request):

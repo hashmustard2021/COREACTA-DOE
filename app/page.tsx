@@ -37,7 +37,11 @@ import {
 } from "recharts";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL !== undefined
+    ? process.env.NEXT_PUBLIC_API_BASE_URL
+    : process.env.NODE_ENV === "production"
+      ? ""
+      : "http://localhost:8000";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -1428,7 +1432,7 @@ export default function Home() {
           ) : (
             <>
               <span>API</span>
-              <strong>{API_BASE_URL}</strong>
+              <strong>{API_BASE_URL || "동일 도메인"}</strong>
             </>
           )}
         </div>

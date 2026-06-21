@@ -8,6 +8,15 @@ from rest_framework.test import APIClient, APITestCase
 from .models import DesignRun, Factor, Project, Result, ResultHistory
 
 
+class HealthApiTests(APITestCase):
+    def test_health_api_is_public(self):
+        response = self.client.get("/api/health/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["data"], {"status": "ok"})
+
+
 class SuzukiCouplingDoeApiTests(APITestCase):
     project_payload = {
         "name": "Suzuki coupling optimization",

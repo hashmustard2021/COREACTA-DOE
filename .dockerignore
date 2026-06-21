@@ -1,0 +1,15 @@
+.git
+.gitignore
+.next
+.venv
+__pycache__
+*.pyc
+db.sqlite3
+node_modules
+out
+frontend_dist
+staticfiles
+.env
+.env.*
+*.log
+deploy-staging
