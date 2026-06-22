@@ -57,3 +57,26 @@ class BootstrapAdminCommandTests(TestCase):
         self.assertTrue(user.check_password("existing-password-741!"))
         self.assertFalse(user.check_password(ADMIN_ENV["DJANGO_SUPERUSER_PASSWORD"]))
         self.assertIn("left unchanged", output.getvalue())
+
+    def test_explicit_reset_recovers_existing_admin(self):
+        user = get_user_model().objects.create_user(
+            username="render_admin",
+            email="existing@example.com",
+            password="existing-password-741!",
+        )
+        output = StringIO()
+        recovery_env = {
+            **ADMIN_ENV,
+            "DJANGO_SUPERUSER_RESET_PASSWORD": "true",
+        }
+
+        with patch.dict(os.environ, recovery_env, clear=False):
+            call_command("bootstrap_admin", stdout=output)
+
+        user.refresh_from_db()
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.email, ADMIN_ENV["DJANGO_SUPERUSER_EMAIL"])
+        self.assertTrue(user.check_password(ADMIN_ENV["DJANGO_SUPERUSER_PASSWORD"]))
+        self.assertNotIn(ADMIN_ENV["DJANGO_SUPERUSER_PASSWORD"], output.getvalue())
+        self.assertIn("recovered", output.getvalue())

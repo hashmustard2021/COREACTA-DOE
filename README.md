@@ -113,3 +113,10 @@ $env:DJANGO_ALLOWED_HOSTS="example.onrender.com"
 $env:DJANGO_CSRF_TRUSTED_ORIGINS="https://example.onrender.com"
 poetry run python manage.py check --deploy
 ```
+
+## Render admin recovery
+
+If the configured admin already exists and its password is unavailable, set
+`DJANGO_SUPERUSER_RESET_PASSWORD=true` together with a new
+`DJANGO_SUPERUSER_PASSWORD`, then rebuild and deploy. After a successful login,
+delete the reset flag and all `DJANGO_SUPERUSER_*` environment variables.

@@ -11,6 +11,10 @@ REQUIRED_ENV_VARS = (
 )
 
 
+def env_flag(name):
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Command(BaseCommand):
     help = "Create the initial superuser from environment variables when needed."
 
@@ -25,7 +29,19 @@ class Command(BaseCommand):
 
         user_model = get_user_model()
         username = values["DJANGO_SUPERUSER_USERNAME"]
-        if user_model.objects.filter(username=username).exists():
+        existing_user = user_model.objects.filter(username=username).first()
+        if existing_user and env_flag("DJANGO_SUPERUSER_RESET_PASSWORD"):
+            existing_user.email = values["DJANGO_SUPERUSER_EMAIL"]
+            existing_user.is_staff = True
+            existing_user.is_superuser = True
+            existing_user.set_password(values["DJANGO_SUPERUSER_PASSWORD"])
+            existing_user.save(
+                update_fields=["email", "is_staff", "is_superuser", "password"]
+            )
+            self.stdout.write(self.style.SUCCESS("Existing admin account recovered."))
+            return
+
+        if existing_user:
             self.stdout.write(
                 "Admin bootstrap skipped: the configured user already exists and was left unchanged."
             )
