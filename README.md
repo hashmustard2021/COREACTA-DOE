@@ -74,21 +74,23 @@ npm run dev
 - `DJANGO_ALLOWED_HOSTS`: Render 외부 호스트(선택, Render에서는 자동 감지)
 - `DJANGO_CSRF_TRUSTED_ORIGINS`: HTTPS origin(선택, Render에서는 자동 감지)
 - `NEXT_PUBLIC_API_BASE_URL`: 단일 도메인 빌드에서는 빈 문자열
+- `DJANGO_SUPERUSER_USERNAME`: 최초 관리자 username(첫 배포 후 삭제)
+- `DJANGO_SUPERUSER_EMAIL`: 최초 관리자 email(첫 배포 후 삭제)
+- `DJANGO_SUPERUSER_PASSWORD`: 최초 관리자 임시 비밀번호(첫 배포 후 반드시 삭제)
 
 ## Render 무료 데모 배포
 
 1. GitHub 저장소의 `main` 브랜치에 배포 코드를 push합니다.
 2. Render Dashboard에서 **New > Blueprint**를 선택합니다.
 3. `hashmustard2021/COREACTA-DOE` 저장소를 연결합니다.
-4. Render가 `render.yaml`을 읽어 Docker Web Service와 PostgreSQL을 생성하는지 확인합니다.
-5. 첫 배포가 완료되면 `/api/health/`에서 `success: true` 응답을 확인합니다.
-6. Render Shell에서 관리자를 생성합니다.
+4. Blueprint 생성 화면에서 `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_PASSWORD`를 입력합니다.
+5. Render가 `render.yaml`을 읽어 Docker Web Service와 PostgreSQL을 생성하는지 확인합니다.
+6. 배포 로그에서 migration, `Initial admin account created.`, Gunicorn 시작을 확인합니다.
+7. `/api/health/`에서 `success: true` 응답을 확인하고 생성한 관리자 계정으로 로그인합니다.
+8. 로그인 성공 후 Render 환경변수에서 세 `DJANGO_SUPERUSER_*` 값을 삭제합니다. 이후 재배포해도 기존 계정과 비밀번호는 유지됩니다.
+9. 플랫폼 URL에서 프로젝트 생성, 설계, 결과, 리포트, CSV/PDF 다운로드를 확인합니다.
 
-```bash
-python manage.py createsuperuser
-```
-
-7. 플랫폼 URL에서 로그인, 프로젝트 생성, 설계, 결과, 리포트, CSV/PDF 다운로드를 확인합니다.
+관리자 bootstrap 명령은 세 환경변수가 모두 있을 때만 실행됩니다. 동일 username이 이미 존재하면 사용자 정보와 비밀번호를 변경하지 않습니다.
 
 > Render 무료 서비스는 절전, 느린 첫 요청, 데이터베이스 보존 제한이 있을 수 있습니다. 복구 불가능한 연구 데이터는 저장하지 말고 Render의 현재 무료 플랜 정책을 배포 시점에 확인하세요.
 

@@ -38,4 +38,4 @@ RUN DJANGO_DEBUG=true python manage.py collectstatic --noinput
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn coreacta.wsgi:application --bind 0.0.0.0:${PORT} --workers 2 --timeout 120"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py bootstrap_admin && gunicorn coreacta.wsgi:application --bind 0.0.0.0:${PORT} --workers 2 --timeout 120"]
