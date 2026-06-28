@@ -302,6 +302,34 @@ select:focus {
   font-size: 12px;
 }
 
+.recent-projects {
+  display: grid;
+  width: min(460px, 100%);
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.recent-projects > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.recent-project-button {
+  min-height: auto;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.recent-project-button small {
+  margin: 0;
+  color: var(--muted);
+}
+
 .notice {
   margin-bottom: 14px;
   border: 1px solid #b6ddd4;
@@ -440,6 +468,102 @@ select:focus {
 .setup-start-card {
   display: grid;
   gap: 18px;
+}
+
+.wizard-card {
+  max-width: 980px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.wizard-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.wizard-progress span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.wizard-progress span.active {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.1);
+}
+
+.wizard-progress span.complete {
+  color: var(--accent-strong);
+}
+
+.wizard-card .setup-flow {
+  display: none;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.wizard-card[data-step="1"] .result-section-heading,
+.wizard-card[data-step="1"] .project-meta-grid,
+.wizard-card[data-step="1"] .wizard-actions-result,
+.wizard-card[data-step="1"] .setup-submit-row {
+  display: none;
+}
+
+.wizard-card[data-step="2"] .project-name,
+.wizard-card[data-step="2"] .setup-section-heading:not(.result-section-heading),
+.wizard-card[data-step="2"] .factor-grid,
+.wizard-card[data-step="2"] .center-option,
+.wizard-card[data-step="2"] .wizard-actions-values,
+.wizard-card[data-step="2"] .setup-submit-row {
+  display: none;
+}
+
+.wizard-card[data-step="3"] .project-name,
+.wizard-card[data-step="3"] .setup-section-heading,
+.wizard-card[data-step="3"] .factor-grid,
+.wizard-card[data-step="3"] .center-option,
+.wizard-card[data-step="3"] .project-meta-grid,
+.wizard-card[data-step="3"] .wizard-actions-values,
+.wizard-card[data-step="3"] .wizard-actions-result {
+  display: none;
+}
+
+.workspace-header-card {
+  border-color: rgba(15, 118, 110, 0.24);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
+}
+
+.workspace-subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.workspace-name-field {
+  display: grid;
+  max-width: 360px;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.workspace-name-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .guide-intro {

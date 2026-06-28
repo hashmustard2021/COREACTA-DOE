@@ -43,6 +43,8 @@ const API_BASE_URL =
       ? ""
       : "http://localhost:8000";
 
+const wizardSteps = ["조건 선택", "값 입력", "결과 설정", "실험표 생성"];
+
 type ApiResponse<T> = {
   success: boolean;
   data: T;
@@ -671,6 +673,7 @@ export default function Home() {
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   const [isSetupStarted, setIsSetupStarted] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [designRuns, setDesignRuns] = useState<DesignRun[]>([]);
@@ -1023,6 +1026,9 @@ export default function Home() {
 
       setProject(createdProject);
       setDesignRuns(design);
+      setIsIntroComplete(true);
+      setIsSetupStarted(true);
+      setWizardStep(3);
       setYields({});
       setYieldErrors({});
       setResultHistory([]);
@@ -1101,6 +1107,7 @@ export default function Home() {
     setFactorErrors({});
     setIsIntroComplete(false);
     setIsSetupStarted(false);
+    setWizardStep(0);
     setDesignRuns([]);
     setYields({});
     setYieldErrors({});
@@ -1109,6 +1116,15 @@ export default function Home() {
     setExpandedHistoryRuns({});
     setSurfaceData(null);
     setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
+  }
+
+  function startNewExperiment() {
+    resetProjectState();
+    setIsIntroComplete(true);
+    setIsSetupStarted(false);
+    setWizardStep(0);
+    setStatusText("");
+    setErrorText("");
   }
 
   async function handleDeleteProjectById(projectId: number, projectTitle: string) {
@@ -1335,6 +1351,7 @@ export default function Home() {
       setFactorErrors({});
       setIsIntroComplete(true);
       setIsSetupStarted(true);
+      setWizardStep(3);
       const availableSurfaceFactors = continuousFactors(restoredFactors);
       setSurfaceXFactor(factorDisplayName(availableSurfaceFactors[0] ?? restoredFactors[0]));
       setSurfaceYFactor(
@@ -1487,7 +1504,7 @@ export default function Home() {
 
       {currentUser && (
         <>
-      {isSetupStarted && (
+      {project && (
       <section className={isProjectListOpen ? "card project-list-card" : "card project-list-card collapsed"}>
         <div className="card-heading project-list-heading">
           <div>
@@ -1560,7 +1577,7 @@ export default function Home() {
       </section>
       )}
 
-      {isSetupStarted && (errorText || statusText) && (
+      {currentUser && (errorText || statusText) && (
         <div className={errorText ? "notice error" : "notice"}>
           {errorText || statusText}
         </div>
@@ -1591,21 +1608,47 @@ export default function Home() {
             <button
               className="welcome-start-button"
               type="button"
-              onClick={() => setIsIntroComplete(true)}
+              onClick={startNewExperiment}
             >
               내 실험 최적화 시작하기
             </button>
             <small>예: 온도, 시간, 압력, 농도, 속도 등</small>
+            {projectList.length > 0 && (
+              <div className="recent-projects">
+                <span>최근 프로젝트 열기</span>
+                {projectList.slice(0, 3).map((item) => (
+                  <button
+                    className="recent-project-button"
+                    key={item.project_id}
+                    type="button"
+                    onClick={() => void handleLoadProject(item.project_id)}
+                    disabled={isBusy}
+                  >
+                    <strong>{item.name}</strong>
+                    <small>
+                      조건 {item.factor_count}개 · 결과 {item.result_count}/{item.run_budget}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {isIntroComplete && !isSetupStarted && (
-        <section className="card setup-start-card">
+      {isIntroComplete && !isSetupStarted && !project && (
+        <section className="card setup-start-card wizard-card">
+          <div className="wizard-progress" aria-label="실험 생성 단계">
+            {wizardSteps.map((step, index) => (
+              <span className={index === 0 ? "active" : ""} key={step}>
+                {step}
+              </span>
+            ))}
+          </div>
           <div className="card-heading">
             <div>
-              <span>Step 1</span>
-              <h2>바꿔볼 조건 4개를 골라주세요</h2>
+              <span>조건 선택</span>
+              <h2>먼저 바꿔볼 조건을 고르세요</h2>
             </div>
           </div>
 
@@ -1641,19 +1684,30 @@ export default function Home() {
               현재 선택: 범위 조건 {factors.length - categoricalFactorCount}개,
               후보 조건 {categoricalFactorCount}개
             </p>
-            <button type="button" onClick={() => setIsSetupStarted(true)}>
+            <button type="button" onClick={() => { setIsSetupStarted(true); setWizardStep(1); }}>
               다음: 값 입력
             </button>
           </div>
         </section>
       )}
 
-      {isSetupStarted && (
-      <form className="card setup-card" onSubmit={handleGenerateDesign}>
+      {isSetupStarted && !project && (
+      <form className="card setup-card wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
+        <div className="wizard-progress" aria-label="실험 생성 단계">
+          {wizardSteps.map((step, index) => (
+            <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step}>
+              {step}
+            </span>
+          ))}
+        </div>
         <div className="card-heading">
           <div>
-            <span>실험 설정</span>
-            <h2>실험 조건과 측정 결과</h2>
+            <span>{wizardSteps[wizardStep]}</span>
+            <h2>
+              {wizardStep === 1 && "조건 값을 입력하세요"}
+              {wizardStep === 2 && "측정할 결과를 정하세요"}
+              {wizardStep === 3 && "실험표를 생성하세요"}
+            </h2>
           </div>
           {project && (
             <div className="button-group">
@@ -1726,21 +1780,76 @@ export default function Home() {
           <label className="field"><span>측정 결과</span><input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="수율, 휘도, 점도, 용량 등" /></label>
           <label className="field"><span>결과 목표</span><select value={projectGoal} onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}><option value="maximize">크게 만들기 (maximize)</option><option value="minimize">작게 만들기 (minimize)</option></select></label>
         </div>
+        <div className="wizard-actions wizard-actions-result">
+          <button className="secondary-button" type="button" onClick={() => setWizardStep(1)}>
+            이전
+          </button>
+          <button type="button" onClick={() => setWizardStep(3)}>
+            다음: 실험표 생성
+          </button>
+        </div>
 
         <label className="center-option">
           <input type="checkbox" checked={includeCenterPoints && hasContinuousFactor} onChange={(event) => setIncludeCenterPoints(event.target.checked)} disabled={!hasContinuousFactor} />
           <span className="label-with-help">Center point 3회 추가<HelpTip label="Center point 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
         </label>
+        <div className="wizard-actions wizard-actions-values">
+          <button className="secondary-button" type="button" onClick={() => { setIsSetupStarted(false); setWizardStep(0); }}>
+            이전
+          </button>
+          <button type="button" onClick={() => setWizardStep(2)}>
+            다음: 결과 설정
+          </button>
+        </div>
 
         <div className="setup-submit-row">
           <div><span>3단계</span><strong>입력이 끝났나요?</strong><p>Coreacta가 먼저 수행할 실험 조합을 만듭니다.</p></div>
+          <button className="secondary-button" type="button" onClick={() => setWizardStep(2)}>
+            이전
+          </button>
           <button type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
         </div>
       </form>
       )}
 
-      {isSetupStarted && (
+      {project && (
       <>
+      <section className="card workspace-header-card">
+        <div className="card-heading">
+          <div>
+            <span>Workspace</span>
+            <h2>{project.name}</h2>
+            <p className="workspace-subtitle">실험표, 결과 입력, 분석 리포트를 이 공간에서 관리합니다.</p>
+            <label className="workspace-name-field">
+              <span>프로젝트명</span>
+              <input
+                value={projectName}
+                onChange={(event) => setProjectName(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="button-group">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => setIsProjectListOpen((isOpen) => !isOpen)}
+            >
+              {isProjectListOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              프로젝트 목록
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
+              <Save size={16} /> 저장
+            </button>
+            <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
+              <Copy size={16} /> 복제
+            </button>
+            <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
+              <Trash2 size={16} /> 삭제
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section className="card">
         <div className="card-heading">
           <div>
