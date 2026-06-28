@@ -135,6 +135,12 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    session_cookie_domain = os.getenv("DJANGO_SESSION_COOKIE_DOMAIN", "").strip()
+    csrf_cookie_domain = os.getenv("DJANGO_CSRF_COOKIE_DOMAIN", "").strip()
+    if session_cookie_domain:
+        SESSION_COOKIE_DOMAIN = session_cookie_domain
+    if csrf_cookie_domain:
+        CSRF_COOKIE_DOMAIN = csrf_cookie_domain
     SESSION_COOKIE_SAMESITE = "Lax"
     CSRF_COOKIE_SAMESITE = "Lax"
     SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "3600"))
