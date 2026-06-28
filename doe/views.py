@@ -337,7 +337,10 @@ def get_project(request, project_id):
 def require_authenticated(request):
     if request.user.is_authenticated:
         return None
-    return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
+    return api_error(
+        "Session expired. Please log in again.",
+        status_code=status.HTTP_401_UNAUTHORIZED,
+    )
 
 
 def user_payload(user):
