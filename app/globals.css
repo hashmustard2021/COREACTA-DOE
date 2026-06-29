@@ -1139,6 +1139,11 @@ table {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.design-table {
+  min-width: 960px;
 }
 
 .results-table {
@@ -1148,7 +1153,7 @@ table {
 th,
 td {
   border-bottom: 1px solid var(--line);
-  padding: 12px 11px;
+  padding: 12px;
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -1175,14 +1180,39 @@ tbody tr:last-child td {
   font-variant-numeric: tabular-nums;
 }
 
+.numeric-column {
+  text-align: right;
+}
+
+.run-column {
+  width: 96px;
+  text-align: left;
+}
+
+.design-table .numeric-column,
+.design-table .numeric-cell {
+  text-align: center;
+}
+
+.design-table .run-column {
+  width: 108px;
+}
+
+.results-table .numeric-column,
+.results-table .numeric-cell {
+  text-align: right;
+}
+
 .yield-input {
   width: 160px;
 }
 
 .result-cell {
-  display: inline-grid;
+  display: grid;
   gap: 4px;
   justify-items: end;
+  margin-left: auto;
+  width: fit-content;
 }
 
 .result-cell .field-error {

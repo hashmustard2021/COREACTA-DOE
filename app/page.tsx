@@ -1901,12 +1901,12 @@ export default function Home() {
         </div>
 
         <div className="table-wrap">
-          <table>
+          <table className="design-table">
             <thead>
               <tr>
-                <th>Run</th>
+                <th className="run-column">Run</th>
                 {factors.map((factor) => (
-                  <th key={factor.idx}>
+                  <th className="numeric-column" key={factor.idx}>
                     {factor.factor_type === "continuous"
                       ? `${factor.name_kr}(${factor.name_en}, ${factor.unit})`
                       : `${factor.name_kr}(${factor.name_en})`}
@@ -1922,7 +1922,7 @@ export default function Home() {
               ) : (
                 designRuns.map((run) => (
                   <tr key={run.id}>
-                    <td>
+                    <td className="run-column">
                       <span className="run-badge">Run {run.run_order}</span>
                     </td>
                     {factorKeys.map((factorKey) => (
@@ -1961,8 +1961,8 @@ export default function Home() {
           <table className="results-table">
             <thead>
               <tr>
-                <th>Run</th>
-                <th>{responseName || "측정 결과"}</th>
+                <th className="run-column">Run</th>
+                <th className="numeric-column">{responseName || "측정 결과"}</th>
               </tr>
             </thead>
             <tbody>
@@ -1973,10 +1973,10 @@ export default function Home() {
               ) : (
                 designRuns.map((run, index) => (
                   <tr key={run.id}>
-                    <td>
+                    <td className="run-column">
                       <span className="run-badge">Run {run.run_order}</span>
                     </td>
-                    <td>
+                    <td className="numeric-cell">
                       <div className="result-cell">
                         <input
                           ref={(element) => {
@@ -2142,8 +2142,8 @@ export default function Home() {
                   <thead>
                     <tr>
                       <th>Factor</th>
-                      <th>Effect</th>
-                      <th>p-value</th>
+                      <th className="numeric-column">Effect</th>
+                      <th className="numeric-column">p-value</th>
                       <th>Significance</th>
                     </tr>
                   </thead>
