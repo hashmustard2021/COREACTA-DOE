@@ -16,6 +16,12 @@ def env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def append_unique(items, values):
+    for value in values:
+        if value and value not in items:
+            items.append(value)
+
+
 DEBUG = env_bool("DJANGO_DEBUG", True)
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-coreacta-dev-key")
 if not DEBUG and SECRET_KEY == "django-insecure-coreacta-dev-key":
@@ -26,8 +32,11 @@ ALLOWED_HOSTS = env_list(
     "localhost,127.0.0.1,testserver" if DEBUG else "",
 )
 render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
-if render_hostname and render_hostname not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(render_hostname)
+public_hostnames = env_list(
+    "DJANGO_PUBLIC_HOSTS",
+    "" if DEBUG else "coreacta.net,www.coreacta.net",
+)
+append_unique(ALLOWED_HOSTS, [render_hostname, *public_hostnames])
 
 CSRF_TRUSTED_ORIGINS = env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
@@ -35,8 +44,12 @@ CSRF_TRUSTED_ORIGINS = env_list(
 )
 if render_hostname:
     render_origin = f"https://{render_hostname}"
-    if render_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(render_origin)
+else:
+    render_origin = ""
+append_unique(
+    CSRF_TRUSTED_ORIGINS,
+    [render_origin, *[f"https://{hostname}" for hostname in public_hostnames]],
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -232,6 +232,10 @@ type ProjectDetail = {
   results: ResultRecord[];
 };
 
+type CsrfResponse = {
+  csrfToken: string;
+};
+
 const defaultFactors: FactorInput[] = [
   {
     idx: 1,
@@ -432,13 +436,28 @@ function getCookie(name: string) {
   return parts.pop()?.split(";").shift() ?? "";
 }
 
+let csrfTokenCache = "";
+
 async function ensureCsrfToken() {
-  if (getCookie("csrftoken")) return;
-  await fetch(`${API_BASE_URL}/api/auth/csrf/`, {
+  const cookieToken = getCookie("csrftoken");
+  if (cookieToken) {
+    csrfTokenCache = cookieToken;
+    return cookieToken;
+  }
+  if (csrfTokenCache) return csrfTokenCache;
+
+  const response = await fetch(`${API_BASE_URL}/api/auth/csrf/`, {
     credentials: "include",
     mode: "cors",
     cache: "no-store",
   });
+  if (!response.ok) {
+    throw new Error(`CSRF token request failed. HTTP ${response.status}`);
+  }
+
+  const body = (await response.json()) as ApiResponse<CsrfResponse>;
+  csrfTokenCache = getCookie("csrftoken") || body.data?.csrfToken || "";
+  return csrfTokenCache;
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -449,8 +468,11 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   };
 
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    await ensureCsrfToken();
-    headers["X-CSRFToken"] = getCookie("csrftoken");
+    const csrfToken = await ensureCsrfToken();
+    if (!csrfToken) {
+      throw new Error("CSRF token is missing. Please refresh the page and try again.");
+    }
+    headers["X-CSRFToken"] = csrfToken;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -460,6 +482,10 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
     headers,
   });
+  const latestCookieToken = getCookie("csrftoken");
+  if (latestCookieToken) {
+    csrfTokenCache = latestCookieToken;
+  }
 
   let body: ApiResponse<T | null>;
   try {
