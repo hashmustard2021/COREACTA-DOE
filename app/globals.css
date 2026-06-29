@@ -526,7 +526,28 @@ select:focus {
 
 .workspace-header-card {
   border-color: rgba(15, 118, 110, 0.24);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.workspace-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.workspace-title-area {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.workspace-title-area > span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .workspace-subtitle {
@@ -537,15 +558,114 @@ select:focus {
 
 .workspace-name-field {
   display: grid;
-  max-width: 360px;
+  width: min(460px, 100%);
   gap: 6px;
-  margin-top: 14px;
 }
 
 .workspace-name-field span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.workspace-name-field input {
+  min-height: 42px;
+  border-color: transparent;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.workspace-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.workspace-meta-row span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.workspace-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.workspace-actions .danger-button {
+  border-color: var(--line);
+  background: #ffffff;
+}
+
+.workspace-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.workspace-progress span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px 12px;
+}
+
+.workspace-progress span.active {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: var(--accent-soft);
+}
+
+.workspace-progress span.complete {
+  color: var(--accent-strong);
+}
+
+.workspace-progress strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.workspace-progress small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-section,
+.report-card {
+  box-shadow: none;
+}
+
+.workspace-section {
+  margin-bottom: 20px;
+}
+
+.workspace-section .card-heading,
+.report-card .card-heading {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
 }
 
 .guide-intro {
@@ -1338,8 +1458,26 @@ tbody tr:last-child td {
   gap: 16px;
 }
 
+.report-visuals {
+  margin-top: 18px;
+}
+
 .chart-card {
-  margin-bottom: 0;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 14px;
+}
+
+.chart-card .card-heading {
+  margin-bottom: 12px;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.chart-card .card-heading h2 {
+  font-size: 16px;
 }
 
 .chart-wrap {
@@ -1454,6 +1592,7 @@ tbody tr:last-child td {
 @media (max-width: 920px) {
   .hero-card,
   .card-heading,
+  .workspace-header-main,
   .factor-question {
     align-items: stretch;
     flex-direction: column;
@@ -1474,6 +1613,10 @@ tbody tr:last-child td {
   .wizard-summary-grid,
   .stats-grid,
   .surface-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-progress {
     grid-template-columns: 1fr;
   }
 
@@ -1579,8 +1722,14 @@ tbody tr:last-child td {
     flex-direction: column;
   }
 
+  .workspace-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .button-group button,
-  .card-heading button {
+  .card-heading button,
+  .workspace-actions button {
     width: 100%;
   }
 

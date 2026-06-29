@@ -18,6 +18,7 @@ next-dev.log
 next-dev.*.log
 django-dev.log
 django-dev.*.log
+*.tsbuildinfo
 
 __pycache__/
 *.py[cod]

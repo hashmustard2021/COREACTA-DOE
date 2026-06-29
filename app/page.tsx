@@ -18,8 +18,6 @@ import {
   Play,
   RefreshCw,
   Save,
-  ChevronDown,
-  ChevronUp,
   Send,
   Trash2,
 } from "lucide-react";
@@ -729,8 +727,6 @@ export default function Home() {
   const [errorText, setErrorText] = useState("");
   const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
   const [isBusy, setIsBusy] = useState(false);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
-  const [isProjectListOpen, setIsProjectListOpen] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
   const [surfaceMessage, setSurfaceMessage] = useState(
@@ -802,15 +798,39 @@ export default function Home() {
       max: Math.max(...values),
     };
   }, [surfaceData]);
+  const completedResultCount = useMemo(
+    () =>
+      designRuns.filter((run) => {
+        const value = yields[run.run_order] ?? run.result?.response ?? "";
+        return value.trim().length > 0;
+      }).length,
+    [designRuns, yields],
+  );
+  const workspaceStep = report
+    ? 2
+    : completedResultCount > 0
+      ? 1
+      : 0;
+  const workspaceSteps = [
+    {
+      label: "실험표 확인",
+      detail: `${designRuns.length || project?.run_budget || 0}개 조합`,
+    },
+    {
+      label: "결과 입력",
+      detail: `${completedResultCount}/${designRuns.length || project?.run_budget || 0} 입력`,
+    },
+    {
+      label: "분석 보기",
+      detail: report ? "리포트 준비됨" : "결과 저장 후 확인",
+    },
+  ];
 
   const loadProjects = useCallback(async () => {
-    setIsLoadingProjects(true);
     try {
       setProjectList(await apiRequest<ProjectListItem[]>("/api/projects/"));
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "Failed to load projects.");
-    } finally {
-      setIsLoadingProjects(false);
     }
   }, []);
 
@@ -1572,79 +1592,6 @@ export default function Home() {
 
       {currentUser && (
         <>
-      {project && (
-      <section className={isProjectListOpen ? "card project-list-card" : "card project-list-card collapsed"}>
-        <div className="card-heading project-list-heading">
-          <div>
-            <span>프로젝트</span>
-            <h2>저장된 프로젝트 {projectList.length}개</h2>
-          </div>
-          <div className="button-group">
-            {isProjectListOpen && (
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void loadProjects()}
-                disabled={isLoadingProjects}
-              >
-                <RefreshCw size={16} />
-                새로고침
-              </button>
-            )}
-            <button
-              className="secondary-button"
-              type="button"
-              aria-expanded={isProjectListOpen}
-              onClick={() => setIsProjectListOpen((isOpen) => !isOpen)}
-            >
-              {isProjectListOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              {isProjectListOpen ? "접기" : "목록 보기"}
-            </button>
-          </div>
-        </div>
-
-        {isProjectListOpen && (
-          projectList.length === 0 ? (
-            <p className="empty-state">저장된 프로젝트가 없습니다.</p>
-          ) : (
-            <div className="project-list">
-              {projectList.map((item) => (
-                <article
-                  className={project?.id === item.project_id ? "project-item active" : "project-item"}
-                  key={item.project_id}
-                >
-                  <span>
-                    <strong>{item.name}</strong>
-                    <small>프로젝트 {item.project_id}</small>
-                  </span>
-                  <em>조건 {item.factor_count}개</em>
-                  <em>{item.result_count}/{item.run_budget} {item.response_name}</em>
-                  <div className="project-actions">
-                    <button
-                      className="secondary-button compact-button"
-                      type="button"
-                      onClick={() => void handleLoadProject(item.project_id)}
-                      disabled={isBusy}
-                    >
-                      열기/수정
-                    </button>
-                    <button
-                      className="danger-button compact-button"
-                      type="button"
-                      onClick={() => void handleDeleteProjectById(item.project_id, item.name)}
-                      disabled={isBusy}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )
-        )}
-      </section>
-      )}
-
       {currentUser && (errorText || statusText) && (
         <div className={errorText ? "notice error" : "notice"}>
           {errorText || statusText}
@@ -1850,46 +1797,71 @@ export default function Home() {
       {project && (
       <>
       <section className="card workspace-header-card">
-        <div className="card-heading">
-          <div>
+        <div className="workspace-header-main">
+          <div className="workspace-title-area">
             <span>Workspace</span>
-            <h2>{project.name}</h2>
-            <p className="workspace-subtitle">실험표, 결과 입력, 분석 리포트를 이 공간에서 관리합니다.</p>
             <label className="workspace-name-field">
-              <span>프로젝트명</span>
+              <span>Project name</span>
               <input
                 value={projectName}
                 onChange={(event) => setProjectName(event.target.value)}
               />
             </label>
+            <div className="workspace-meta-row">
+              <span>측정 결과: {responseName || "Result"}</span>
+              <span>{projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</span>
+              <span>Project {project.id}</span>
+            </div>
           </div>
-          <div className="button-group">
+          <div className="workspace-actions">
             <button
               className="secondary-button"
               type="button"
-              onClick={() => setIsProjectListOpen((isOpen) => !isOpen)}
+              onClick={() => {
+                setProject(null);
+                setIsIntroComplete(false);
+                setIsSetupStarted(false);
+                void loadProjects();
+              }}
             >
-              {isProjectListOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              프로젝트 목록
+              Home
             </button>
             <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
-              <Save size={16} /> 저장
+              <Save size={15} /> 저장
             </button>
             <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
-              <Copy size={16} /> 복제
+              <Copy size={15} /> 복제
             </button>
             <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
-              <Trash2 size={16} /> 삭제
+              <Trash2 size={15} /> 삭제
             </button>
           </div>
         </div>
+        <div className="workspace-progress" aria-label="Workspace 진행 상태">
+          {workspaceSteps.map((step, index) => (
+            <span
+              className={
+                index === workspaceStep
+                  ? "active"
+                  : index < workspaceStep
+                    ? "complete"
+                    : ""
+              }
+              key={step.label}
+            >
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
+            </span>
+          ))}
+        </div>
       </section>
 
-      <section className="card">
+      <section className="card workspace-section">
         <div className="card-heading">
           <div>
-            <span>실험표</span>
-            <h2>{project ? `${project.name} · Project ${project.id}` : "아직 생성된 실험표가 없습니다"}</h2>
+            <span>Design Table</span>
+            <h2>먼저 수행할 실험표</h2>
+            <p>아래 조합대로 실험을 수행한 뒤 결과값을 입력하세요.</p>
           </div>
           <button
             className="secondary-button"
@@ -1909,7 +1881,9 @@ export default function Home() {
                 <th>Run</th>
                 {factors.map((factor) => (
                   <th key={factor.idx}>
-                    {factor.name_kr}({factor.name_en}, {factor.unit})
+                    {factor.factor_type === "continuous"
+                      ? `${factor.name_kr}(${factor.name_en}, ${factor.unit})`
+                      : `${factor.name_kr}(${factor.name_en})`}
                   </th>
                 ))}
               </tr>
@@ -1938,11 +1912,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card">
+      <section className="card workspace-section results-section">
         <div className="card-heading">
           <div>
-            <span>결과 입력</span>
-            <h2>{responseName || "측정 결과"} 입력</h2>
+            <span>Results Input</span>
+            <h2>측정 결과 입력</h2>
+            <p>각 실험 후 얻은 결과값을 입력하세요.</p>
           </div>
           <div className="button-group">
             <button
@@ -1952,15 +1927,6 @@ export default function Home() {
             >
               <Send size={16} />
               결과 저장
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={handleRefreshReport}
-              disabled={!project || isBusy}
-            >
-              <RefreshCw size={16} />
-              리포트 새로고침
             </button>
           </div>
         </div>
@@ -2052,10 +2018,19 @@ export default function Home() {
       <section className="card report-card">
         <div className="card-heading">
           <div>
-            <span>분석 결과</span>
-            <h2>주요 영향 조건과 다음 실험 추천</h2>
+            <span>Report</span>
+            <h2>분석 결과</h2>
+            <p>중요한 조건, 다음 실험 추천, 시각화와 해석을 한곳에서 확인하세요.</p>
           </div>
           <div className="report-actions">
+            <button
+              type="button"
+              onClick={handleRefreshReport}
+              disabled={!project || isBusy}
+            >
+              <RefreshCw size={16} />
+              분석 보기
+            </button>
             <button
               className="secondary-button"
               type="button"
@@ -2074,7 +2049,7 @@ export default function Home() {
         ) : (
           <div className="report-layout">
             <div>
-              <h3>Top Drivers</h3>
+              <h3>중요한 조건</h3>
               <div className="driver-grid">
                 {report.top_drivers.map((effect, index) => (
                   <article className="driver-card" key={effect.factor_key}>
@@ -2091,7 +2066,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h3>Notes</h3>
+              <h3>해석 메모</h3>
               <div className="notes-box">
                 {report.message ||
                   "Impact는 effect의 절댓값입니다. Signed effect는 HIGH 평균 수율 - LOW 평균 수율이며, 음수이면 LOW 조건이 유리하다는 뜻입니다."}
@@ -2099,7 +2074,7 @@ export default function Home() {
             </div>
 
             <div className="advisor-card">
-              <h3>AI Experiment Advisor</h3>
+              <h3>AI / Rule-based interpretation</h3>
               {report.interpretation.length === 0 ? (
                 <p className="empty-state">해석을 생성할 데이터가 충분하지 않습니다.</p>
               ) : (
@@ -2163,7 +2138,7 @@ export default function Home() {
             </div>
 
             <div className="recommendations">
-              <h3>Recommended Next Runs</h3>
+              <h3>다음 실험 추천</h3>
               {report.recommendations.length === 0 ? (
                 <p className="empty-state">No recommendation yet.</p>
               ) : (
@@ -2194,10 +2169,8 @@ export default function Home() {
             </div>
           </div>
         )}
-      </section>
-
-      <section className="graph-section">
-        <article className="card chart-card">
+        <div className="graph-section report-visuals">
+        <article className="chart-card">
           <div className="card-heading">
             <div>
               <span>시각화</span>
@@ -2260,7 +2233,7 @@ export default function Home() {
           )}
         </article>
 
-        <article className="card chart-card">
+        <article className="chart-card">
           <div className="card-heading">
             <div>
               <span>시각화</span>
@@ -2306,7 +2279,7 @@ export default function Home() {
           )}
         </article>
 
-        <article className="card chart-card">
+        <article className="chart-card">
           <div className="card-heading">
             <div>
               <span>시각화</span>
@@ -2357,7 +2330,7 @@ export default function Home() {
           )}
         </article>
 
-        <article className="card chart-card contour-card">
+        <article className="chart-card contour-card">
           <div className="card-heading">
             <div>
               <span>결과 예측</span>
@@ -2451,6 +2424,7 @@ export default function Home() {
             </div>
           )}
         </article>
+        </div>
       </section>
       </>
       )}
