@@ -4,6 +4,7 @@ import {
   Fragment,
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -75,10 +76,11 @@ type YieldErrors = Record<number, string>;
 type FactorPresetId =
   | "temperature"
   | "time"
-  | "catalyst_loading"
   | "concentration"
+  | "speed"
   | "solvent"
-  | "base"
+  | "material"
+  | "equipment_setting"
   | "custom";
 
 type ProjectFactor = {
@@ -256,21 +258,21 @@ const defaultFactors: FactorInput[] = [
   {
     idx: 3,
     factor_type: "continuous",
-    name_kr: "촉매량",
-    name_en: "Catalyst loading",
-    unit: "mol%",
-    low: "0.5",
-    high: "5",
-    levels: "",
-  },
-  {
-    idx: 4,
-    factor_type: "continuous",
     name_kr: "농도",
     name_en: "Concentration",
     unit: "M",
     low: "0.05",
     high: "0.30",
+    levels: "",
+  },
+  {
+    idx: 4,
+    factor_type: "continuous",
+    name_kr: "속도",
+    name_en: "Speed",
+    unit: "rpm",
+    low: "200",
+    high: "800",
     levels: "",
   },
 ];
@@ -285,7 +287,7 @@ const factorPresetOptions: Array<{
   {
     id: "temperature",
     label: "온도 / Temperature",
-    description: "범위 조건",
+    description: "숫자 범위형",
     example: "예: 60-90 °C처럼 낮은 값과 높은 값을 정합니다.",
     factor: {
       factor_type: "continuous",
@@ -300,7 +302,7 @@ const factorPresetOptions: Array<{
   {
     id: "time",
     label: "시간 / Time",
-    description: "범위 조건",
+    description: "숫자 범위형",
     example: "예: 1-4 h처럼 반응 시간을 어느 범위에서 볼지 정합니다.",
     factor: {
       factor_type: "continuous",
@@ -313,24 +315,9 @@ const factorPresetOptions: Array<{
     },
   },
   {
-    id: "catalyst_loading",
-    label: "촉매량 / Catalyst loading",
-    description: "범위 조건",
-    example: "예: 0.5-5 mol%처럼 투입량의 낮은 값과 높은 값을 정합니다.",
-    factor: {
-      factor_type: "continuous",
-      name_kr: "촉매량",
-      name_en: "Catalyst loading",
-      unit: "mol%",
-      low: "0.5",
-      high: "5",
-      levels: "",
-    },
-  },
-  {
     id: "concentration",
     label: "농도 / Concentration",
-    description: "범위 조건",
+    description: "숫자 범위형",
     example: "예: 0.05-0.30 M처럼 희석/농축 범위를 정합니다.",
     factor: {
       factor_type: "continuous",
@@ -343,9 +330,24 @@ const factorPresetOptions: Array<{
     },
   },
   {
+    id: "speed",
+    label: "속도 / Speed",
+    description: "숫자 범위형",
+    example: "예: 200-800 rpm처럼 낮은 값과 높은 값을 정합니다.",
+    factor: {
+      factor_type: "continuous",
+      name_kr: "속도",
+      name_en: "Speed",
+      unit: "rpm",
+      low: "200",
+      high: "800",
+      levels: "",
+    },
+  },
+  {
     id: "solvent",
     label: "용매 / Solvent",
-    description: "후보 조건",
+    description: "선택형",
     example: "예: THF와 Toluene처럼 비교할 후보 2개를 고릅니다.",
     factor: {
       factor_type: "categorical",
@@ -358,18 +360,33 @@ const factorPresetOptions: Array<{
     },
   },
   {
-    id: "base",
-    label: "염기 / Base",
-    description: "후보 조건",
-    example: "예: K2CO3와 Cs2CO3처럼 비교할 후보 2개를 고릅니다.",
+    id: "material",
+    label: "재료 / Material",
+    description: "선택형",
+    example: "예: A와 B처럼 비교할 재료 후보 2개를 고릅니다.",
     factor: {
       factor_type: "categorical",
-      name_kr: "염기",
-      name_en: "Base",
+      name_kr: "재료",
+      name_en: "Material",
       unit: "",
       low: "",
       high: "",
-      levels: "K2CO3, Cs2CO3",
+      levels: "A, B",
+    },
+  },
+  {
+    id: "equipment_setting",
+    label: "장비 조건 / Equipment setting",
+    description: "선택형",
+    example: "예: Low grade와 High grade처럼 장비 조건 후보 2개를 고릅니다.",
+    factor: {
+      factor_type: "categorical",
+      name_kr: "장비 조건",
+      name_en: "Equipment setting",
+      unit: "",
+      low: "",
+      high: "",
+      levels: "Low grade, High grade",
     },
   },
   {
@@ -591,6 +608,32 @@ function validateFactorsForSubmit(factors: FactorInput[]) {
   };
 }
 
+function validateConditionSelection(factors: FactorInput[]) {
+  const errors: FactorFieldErrors = {};
+
+  for (const factor of factors) {
+    if (!factor.name_kr.trim()) {
+      errors[factor.idx] = {
+        ...(errors[factor.idx] ?? {}),
+        name_kr: "조건명을 입력해주세요. 예: 온도",
+      };
+    }
+    if (!factor.name_en.trim()) {
+      errors[factor.idx] = {
+        ...(errors[factor.idx] ?? {}),
+        name_en: "영문명을 입력해주세요. 예: Temperature",
+      };
+    }
+  }
+
+  return {
+    errors,
+    message: Object.keys(errors).length
+      ? "조건 이름을 확인해주세요."
+      : "",
+  };
+}
+
 function continuousFactors(factors: FactorInput[]) {
   return factors.filter((factor) => factor.factor_type === "continuous");
 }
@@ -607,7 +650,7 @@ function defaultContinuousFields(idx: number) {
 }
 
 function defaultCategoricalFields(idx: number) {
-  const preset = factorFromPreset(idx, idx % 2 === 1 ? "solvent" : "base");
+  const preset = factorFromPreset(idx, idx % 2 === 1 ? "solvent" : "material");
   return {
     name_kr: preset.name_kr,
     name_en: preset.name_en,
@@ -666,7 +709,7 @@ export default function Home() {
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [projectName, setProjectName] = useState("Suzuki coupling optimization");
+  const [projectName, setProjectName] = useState("New experiment");
   const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
   const [responseName, setResponseName] = useState("Result");
   const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
@@ -703,18 +746,6 @@ export default function Home() {
   );
   const surfaceFactorOptions = useMemo(() => continuousFactors(factors), [factors]);
   const hasContinuousFactor = surfaceFactorOptions.length > 0;
-  const categoricalFactorCount = factors.filter(
-    (factor) => factor.factor_type === "categorical",
-  ).length;
-  const isRangeOnlySetup = categoricalFactorCount === 0;
-  const availableFactorPresetOptions = useMemo(
-    () =>
-      factorPresetOptions.filter((option) => {
-        if (!isRangeOnlySetup) return true;
-        return !option.factor || option.factor.factor_type === "continuous";
-      }),
-    [isRangeOnlySetup],
-  );
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -772,9 +803,33 @@ export default function Home() {
     };
   }, [surfaceData]);
 
+  const loadProjects = useCallback(async () => {
+    setIsLoadingProjects(true);
+    try {
+      setProjectList(await apiRequest<ProjectListItem[]>("/api/projects/"));
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Failed to load projects.");
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }, []);
+
+  const initializeAuth = useCallback(async () => {
+    try {
+      await ensureCsrfToken();
+      const user = await apiRequest<User>("/api/auth/me/");
+      setCurrentUser(user);
+      await loadProjects();
+    } catch {
+      setCurrentUser(null);
+    } finally {
+      setIsAuthChecked(true);
+    }
+  }, [loadProjects]);
+
   useEffect(() => {
     void initializeAuth();
-  }, []);
+  }, [initializeAuth]);
 
   useEffect(() => {
     if (!hasContinuousFactor && includeCenterPoints) {
@@ -797,19 +852,6 @@ export default function Home() {
       setSurfaceYFactor(optionNames[1] ?? optionNames[0]);
     }
   }, [surfaceFactorOptions, surfaceXFactor, surfaceYFactor]);
-
-  async function initializeAuth() {
-    try {
-      await ensureCsrfToken();
-      const user = await apiRequest<User>("/api/auth/me/");
-      setCurrentUser(user);
-      await loadProjects();
-    } catch {
-      setCurrentUser(null);
-    } finally {
-      setIsAuthChecked(true);
-    }
-  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -845,7 +887,7 @@ export default function Home() {
       await apiRequest<Record<string, never>>("/api/auth/logout/", { method: "POST" });
       setCurrentUser(null);
       setProject(null);
-      setProjectName("Suzuki coupling optimization");
+      setProjectName("New experiment");
       setProjectSlogan("감이 아니라 근거로 실험하세요.");
       setResponseName("Result");
       setProjectGoal("maximize");
@@ -934,11 +976,48 @@ export default function Home() {
       factorFromPreset(1, "temperature"),
       factorFromPreset(2, "time"),
       factorFromPreset(3, "solvent"),
-      factorFromPreset(4, "base"),
+      factorFromPreset(4, "material"),
     ]);
     setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
+  }
+
+  function goToWizardStep(nextStep: number) {
+    setErrorText("");
+    setStatusText("");
+    setWizardStep(nextStep);
+  }
+
+  function proceedFromConditionSelection() {
+    const validationResult = validateConditionSelection(factors);
+    setFactorErrors(validationResult.errors);
+    if (validationResult.message) {
+      setErrorText(validationResult.message);
+      setStatusText("");
+      return;
+    }
+    goToWizardStep(1);
+  }
+
+  function proceedFromConditionValues() {
+    const validationResult = validateFactorsForSubmit(factors);
+    setFactorErrors(validationResult.errors);
+    if (validationResult.message) {
+      setErrorText(validationResult.message);
+      setStatusText("");
+      return;
+    }
+    goToWizardStep(2);
+  }
+
+  function proceedFromResultSettings() {
+    if (!responseName.trim()) {
+      setErrorText("측정 결과 이름을 입력해주세요. 예: 수율, 휘도, 점도");
+      setStatusText("");
+      return;
+    }
+    goToWizardStep(3);
   }
 
   function focusNextYieldInput(
@@ -1099,7 +1178,7 @@ export default function Home() {
 
   function resetProjectState() {
     setProject(null);
-    setProjectName("Suzuki coupling optimization");
+    setProjectName("New experiment");
     setProjectSlogan("감이 아니라 근거로 실험하세요.");
     setResponseName("Result");
     setProjectGoal("maximize");
@@ -1121,7 +1200,7 @@ export default function Home() {
   function startNewExperiment() {
     resetProjectState();
     setIsIntroComplete(true);
-    setIsSetupStarted(false);
+    setIsSetupStarted(true);
     setWizardStep(0);
     setStatusText("");
     setErrorText("");
@@ -1295,17 +1374,6 @@ export default function Home() {
       setErrorText(error instanceof Error ? error.message : "PDF download failed.");
     } finally {
       setIsBusy(false);
-    }
-  }
-
-  async function loadProjects() {
-    setIsLoadingProjects(true);
-    try {
-      setProjectList(await apiRequest<ProjectListItem[]>("/api/projects/"));
-    } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to load projects.");
-    } finally {
-      setIsLoadingProjects(false);
     }
   }
 
@@ -1636,67 +1704,12 @@ export default function Home() {
         </section>
       )}
 
-      {isIntroComplete && !isSetupStarted && !project && (
-        <section className="card setup-start-card wizard-card">
-          <div className="wizard-progress" aria-label="실험 생성 단계">
-            {wizardSteps.map((step, index) => (
-              <span className={index === 0 ? "active" : ""} key={step}>
-                {step}
-              </span>
-            ))}
-          </div>
-          <div className="card-heading">
-            <div>
-              <span>조건 선택</span>
-              <h2>먼저 바꿔볼 조건을 고르세요</h2>
-            </div>
-          </div>
-
-          <div className="section-label">
-            <strong>어떤 조건을 바꿔볼까요?</strong>
-            <span>잘 모르겠다면 기본값 그대로 두고 다음 단계로 넘어가도 됩니다.</span>
-          </div>
-
-          <div className="factor-picker-list">
-            {factors.map((factor, index) => (
-              <label className="field" key={factor.idx}>
-                <span>
-                  {index + 1}번째 변수
-                </span>
-                <select
-                  value={factorPresetId(factor)}
-                  onChange={(event) =>
-                    applyFactorPreset(index, event.target.value as FactorPresetId)
-                  }
-                >
-                  {factorPresetOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label} · {option.description}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-
-          <div className="setup-start-footer">
-            <p>
-              현재 선택: 범위 조건 {factors.length - categoricalFactorCount}개,
-              후보 조건 {categoricalFactorCount}개
-            </p>
-            <button type="button" onClick={() => { setIsSetupStarted(true); setWizardStep(1); }}>
-              다음: 값 입력
-            </button>
-          </div>
-        </section>
-      )}
-
-      {isSetupStarted && !project && (
+      {isIntroComplete && !project && (
       <form className="card setup-card wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
         <div className="wizard-progress" aria-label="실험 생성 단계">
           {wizardSteps.map((step, index) => (
             <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step}>
-              {step}
+              {index + 1} {step}
             </span>
           ))}
         </div>
@@ -1704,45 +1717,47 @@ export default function Home() {
           <div>
             <span>{wizardSteps[wizardStep]}</span>
             <h2>
-              {wizardStep === 1 && "조건 값을 입력하세요"}
-              {wizardStep === 2 && "측정할 결과를 정하세요"}
-              {wizardStep === 3 && "실험표를 생성하세요"}
+              {wizardStep === 0 && "바꿔볼 조건 4개를 골라주세요"}
+              {wizardStep === 1 && "각 조건의 범위를 입력해주세요"}
+              {wizardStep === 2 && "무엇을 비교할까요?"}
+              {wizardStep === 3 && "실험표를 생성할 준비가 되었습니다"}
             </h2>
-          </div>
-          {project && (
-            <div className="button-group">
-              <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
-                <Save size={16} /> 프로젝트 저장
-              </button>
-              <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
-                <Copy size={16} /> 복제
-              </button>
-              <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
-                <Trash2 size={16} /> 삭제
-              </button>
-            </div>
-          )}
-        </div>
-
-        <ol className="setup-flow" aria-label="실험 설정 순서">
-          <li><strong>1단계: 바꿔볼 조건 입력</strong><p>결과에 영향을 줄 것 같은 조건을 입력하세요.</p><small>예: 온도, 시간, 압력, 농도, 속도 등</small></li>
-          <li><strong>2단계: 측정할 결과 입력</strong><p>실험 후 비교할 결과값을 정하세요.</p><small>예: 수율, 휘도, 점도, 용량, 접착력, 저항 등</small></li>
-          <li><strong>3단계: 실험표 생성</strong><p>Coreacta가 먼저 수행할 실험 조합을 제안합니다.</p></li>
-        </ol>
-
-        <label className="field project-name">
-          <span>프로젝트명</span>
-          <input value={projectName} onChange={(event) => setProjectName(event.target.value)} required />
-        </label>
-
-        <div className="setup-section-heading">
-          <div><span>1단계</span><h3>실험 조건</h3><p>각 조건의 종류와 비교할 값을 입력하세요.</p></div>
-          <div className="button-group">
-            <button className="secondary-button" type="button" onClick={applyDefaultContinuousFactors} disabled={isBusy}>기본값으로 초기화</button>
-            <button className="secondary-button" type="button" onClick={() => setIsSetupStarted(false)} disabled={isBusy}>조건 선택으로 돌아가기</button>
+            {wizardStep === 0 && (
+              <p>결과에 영향을 줄 것 같은 조건을 선택하세요. 잘 모르겠다면 기본값 그대로 시작해도 됩니다.</p>
+            )}
           </div>
         </div>
 
+        {wizardStep === 0 && (
+        <>
+        <div className="factor-grid condition-select-grid">
+          {factors.map((factor, index) => {
+            const errors = factorErrors[factor.idx] ?? {};
+            return (
+              <article className="factor-row" key={factor.idx}>
+                <div className="factor-row-heading">
+                  <strong>조건 {index + 1}</strong>
+                  <span>{factor.factor_type === "continuous" ? "숫자 범위형" : "선택형"}</span>
+                </div>
+                <div className="factor-fields">
+                  <label className="factor-cell"><span>기본 조건</span><select value={factorPresetId(factor)} onChange={(event) => applyFactorPreset(index, event.target.value as FactorPresetId)}>{factorPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.description}</option>)}</select></label>
+                  <label className="factor-cell"><span>조건 유형</span><select value={factor.factor_type} onChange={(event) => updateFactor(index, "factor_type", event.target.value)}><option value="continuous">숫자 범위형</option><option value="categorical">선택형</option></select></label>
+                  <label className="factor-cell"><span>조건명</span><input className={errors.name_kr ? "invalid-input" : ""} value={factor.name_kr} placeholder="예: 온도" onChange={(event) => updateFactor(index, "name_kr", event.target.value)} aria-invalid={Boolean(errors.name_kr)} required />{errors.name_kr && <small className="field-error">{errors.name_kr}</small>}</label>
+                  <label className="factor-cell"><span>영문명</span><input className={errors.name_en ? "invalid-input" : ""} value={factor.name_en} placeholder="예: Temperature" onChange={(event) => updateFactor(index, "name_en", event.target.value)} aria-invalid={Boolean(errors.name_en)} required />{errors.name_en && <small className="field-error">{errors.name_en}</small>}</label>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="wizard-actions">
+          <button className="secondary-button" type="button" onClick={applyDefaultContinuousFactors} disabled={isBusy}>기본값으로 초기화</button>
+          <button type="button" onClick={proceedFromConditionSelection}>다음: 값 입력</button>
+        </div>
+        </>
+        )}
+
+        {wizardStep === 1 && (
+        <>
         <div className="factor-grid">
           {factors.map((factor, index) => {
             const errors = factorErrors[factor.idx] ?? {};
@@ -1750,13 +1765,9 @@ export default function Home() {
               <article className="factor-row" key={factor.idx}>
                 <div className="factor-row-heading">
                   <strong>조건 {factorKeys[index]}</strong>
-                  <span>{factor.name_kr || "조건명을 입력하세요"}</span>
+                  <span>{factor.name_kr} / {factor.name_en}</span>
                 </div>
                 <div className="factor-fields">
-                  <label className="factor-cell"><span>조건 선택</span><select value={factorPresetId(factor)} onChange={(event) => applyFactorPreset(index, event.target.value as FactorPresetId)}>{availableFactorPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
-                  <label className="factor-cell"><span>조건 유형</span><select value={factor.factor_type} onChange={(event) => updateFactor(index, "factor_type", event.target.value)}><option value="continuous">숫자 범위형 (Continuous)</option>{!isRangeOnlySetup && <option value="categorical">선택형 (Categorical)</option>}</select></label>
-                  <label className="factor-cell"><span>조건명</span><input className={errors.name_kr ? "invalid-input" : ""} value={factor.name_kr} placeholder="예: 온도" onChange={(event) => updateFactor(index, "name_kr", event.target.value)} aria-invalid={Boolean(errors.name_kr)} required />{errors.name_kr && <small className="field-error">{errors.name_kr}</small>}</label>
-                  <label className="factor-cell"><span>영문명</span><input className={errors.name_en ? "invalid-input" : ""} value={factor.name_en} placeholder="예: Temperature" onChange={(event) => updateFactor(index, "name_en", event.target.value)} aria-invalid={Boolean(errors.name_en)} required />{errors.name_en && <small className="field-error">{errors.name_en}</small>}</label>
                   {factor.factor_type === "continuous" ? (
                     <>
                       <label className="factor-cell"><span>단위</span><input className={errors.unit ? "invalid-input" : ""} value={factor.unit} placeholder="예: °C" onChange={(event) => updateFactor(index, "unit", event.target.value)} aria-invalid={Boolean(errors.unit)} required />{errors.unit && <small className="field-error">{errors.unit}</small>}</label>
@@ -1771,44 +1782,68 @@ export default function Home() {
             );
           })}
         </div>
-
-        <div className="setup-section-heading result-section-heading">
-          <div><span>2단계</span><h3>측정 결과</h3><p>실험 후 기록하고 비교할 결과값을 정하세요.</p></div>
-        </div>
-        <div className="project-meta-grid">
-          <label className="field"><span>한 줄 설명</span><input value={projectSlogan} onChange={(event) => setProjectSlogan(event.target.value)} placeholder="감이 아니라 근거로 실험하세요." /></label>
-          <label className="field"><span>측정 결과</span><input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="수율, 휘도, 점도, 용량 등" /></label>
-          <label className="field"><span>결과 목표</span><select value={projectGoal} onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}><option value="maximize">크게 만들기 (maximize)</option><option value="minimize">작게 만들기 (minimize)</option></select></label>
-        </div>
-        <div className="wizard-actions wizard-actions-result">
-          <button className="secondary-button" type="button" onClick={() => setWizardStep(1)}>
-            이전
-          </button>
-          <button type="button" onClick={() => setWizardStep(3)}>
-            다음: 실험표 생성
-          </button>
-        </div>
-
         <label className="center-option">
           <input type="checkbox" checked={includeCenterPoints && hasContinuousFactor} onChange={(event) => setIncludeCenterPoints(event.target.checked)} disabled={!hasContinuousFactor} />
-          <span className="label-with-help">Center point 3회 추가<HelpTip label="Center point 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
+          <span className="label-with-help">중간값 확인 실험 3회 추가<HelpTip label="중간값 확인 실험 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
         </label>
-        <div className="wizard-actions wizard-actions-values">
-          <button className="secondary-button" type="button" onClick={() => { setIsSetupStarted(false); setWizardStep(0); }}>
-            이전
-          </button>
-          <button type="button" onClick={() => setWizardStep(2)}>
-            다음: 결과 설정
-          </button>
+        <div className="wizard-actions">
+          <button className="secondary-button" type="button" onClick={() => goToWizardStep(0)}>이전</button>
+          <button type="button" onClick={proceedFromConditionValues}>다음: 결과 설정</button>
         </div>
+        </>
+        )}
 
-        <div className="setup-submit-row">
-          <div><span>3단계</span><strong>입력이 끝났나요?</strong><p>Coreacta가 먼저 수행할 실험 조합을 만듭니다.</p></div>
-          <button className="secondary-button" type="button" onClick={() => setWizardStep(2)}>
-            이전
-          </button>
+        {wizardStep === 2 && (
+        <>
+        <div className="project-meta-grid result-settings-grid">
+          <label className="field"><span>측정 결과</span><input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="수율, 휘도, 점도, 용량 등" /></label>
+          <label className="field"><span>목표</span><select value={projectGoal} onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}><option value="maximize">크게 만들기</option><option value="minimize">작게 만들기</option></select></label>
+        </div>
+        <div className="wizard-actions">
+          <button className="secondary-button" type="button" onClick={() => goToWizardStep(1)}>이전</button>
+          <button type="button" onClick={proceedFromResultSettings}>다음: 실험표 생성</button>
+        </div>
+        </>
+        )}
+
+        {wizardStep === 3 && (
+        <>
+        <div className="wizard-summary-grid">
+          <section className="wizard-summary-panel">
+            <span>선택한 조건</span>
+            {factors.map((factor) => (
+              <div className="wizard-summary-item" key={factor.idx}>
+                <strong>{factor.name_kr} / {factor.name_en}</strong>
+                <small>
+                  {factor.factor_type === "continuous"
+                    ? `숫자 범위형 · ${factor.low} - ${factor.high} ${factor.unit}`
+                    : `선택형 · ${parseFactorLevels(factor.levels).join(", ")}`}
+                </small>
+              </div>
+            ))}
+          </section>
+          <section className="wizard-summary-panel">
+            <span>측정 결과</span>
+            <div className="wizard-summary-item">
+              <strong>{responseName || "Result"}</strong>
+              <small>{projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</small>
+            </div>
+            <div className="wizard-summary-item">
+              <strong>{includeCenterPoints && hasContinuousFactor ? "11회 실험" : "8회 실험"}</strong>
+              <small>{includeCenterPoints && hasContinuousFactor ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
+            </div>
+          </section>
+        </div>
+        <label className="field project-name">
+          <span>프로젝트명</span>
+          <input value={projectName} onChange={(event) => setProjectName(event.target.value)} required />
+        </label>
+        <div className="wizard-actions">
+          <button className="secondary-button" type="button" onClick={() => goToWizardStep(2)}>이전</button>
           <button type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
         </div>
+        </>
+        )}
       </form>
       )}
 
