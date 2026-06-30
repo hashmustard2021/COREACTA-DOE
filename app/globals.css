@@ -303,15 +303,9 @@ select:focus {
   padding: 8px 12px;
 }
 
-.guided-cta-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 34px;
-}
-
 .welcome-start-button {
   min-height: 52px;
+  margin-top: 34px;
   padding: 0 26px;
   font-size: 16px;
 }
@@ -428,86 +422,119 @@ select:focus {
   line-height: 1.6;
 }
 
-.coach-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 280px;
-  color: var(--accent-strong);
-}
-
-.coach-mark.compact {
-  max-width: 230px;
-}
-
-.coach-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
-  animation: coach-nudge 1.25s ease-in-out infinite;
-  flex: 0 0 auto;
-}
-
-.coach-arrow[data-direction="down"] {
-  transform: rotate(90deg);
-  animation-name: coach-nudge-down;
-}
-
-.coach-bubble {
+.onboarding-card {
   position: relative;
-  border: 1px solid rgba(15, 118, 110, 0.22);
+  width: min(300px, calc(100vw - 40px));
+  margin-top: 18px;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.45;
-  padding: 10px 12px;
+  background: #2f7edb;
+  box-shadow: 0 16px 34px rgba(47, 126, 219, 0.28);
+  color: #ffffff;
+  padding: 18px 18px 16px;
+  text-align: left;
+  animation: onboarding-float 1.7s ease-in-out infinite;
 }
 
-.coach-bubble::before {
+.welcome-screen .onboarding-card {
   position: absolute;
-  top: 50%;
-  left: -6px;
-  width: 10px;
-  height: 10px;
-  border-left: 1px solid rgba(15, 118, 110, 0.22);
-  border-bottom: 1px solid rgba(15, 118, 110, 0.22);
-  background: #ffffff;
+  top: 246px;
+  left: calc(50% - 430px);
+  margin-top: 0;
+}
+
+.wizard-card .onboarding-card,
+.workspace-header-card .onboarding-card {
+  margin: 0 0 18px;
+}
+
+.onboarding-card::after {
+  position: absolute;
+  top: 36px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background: #2f7edb;
   content: "";
-  transform: translateY(-50%) rotate(45deg);
+  transform: rotate(45deg);
 }
 
-.guided-action {
-  display: inline-flex;
+.welcome-screen .onboarding-card::after {
+  top: 96px;
+  right: -10px;
+}
+
+.onboarding-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  min-height: 24px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+}
+
+.onboarding-card strong {
+  display: block;
+  padding-right: 28px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.onboarding-card p {
+  margin: 8px 0 18px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.onboarding-footer {
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-@keyframes coach-nudge {
+.onboarding-footer span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.onboarding-footer button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 0 13px;
+}
+
+.tour-target {
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(47, 126, 219, 0.36);
+  animation: tour-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes onboarding-float {
   0%,
   100% {
-    transform: translateX(0);
+    transform: translateY(0);
   }
   50% {
-    transform: translateX(5px);
+    transform: translateY(-4px);
   }
 }
 
-@keyframes coach-nudge-down {
+@keyframes tour-pulse {
   0%,
   100% {
-    transform: rotate(90deg) translateX(0);
+    box-shadow: 0 0 0 0 rgba(47, 126, 219, 0.34);
   }
   50% {
-    transform: rotate(90deg) translateX(5px);
+    box-shadow: 0 0 0 6px rgba(47, 126, 219, 0.08);
   }
 }
 
@@ -788,12 +815,6 @@ select:focus {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.workspace-coach-row {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 12px;
 }
 
 .workspace-section,
@@ -1827,22 +1848,9 @@ tbody tr:last-child td {
     flex-direction: column;
   }
 
-  .guided-cta-row,
-  .guided-action {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .guided-action {
-    width: 100%;
-  }
-
-  .guided-action button {
-    width: 100%;
-  }
-
-  .coach-mark {
-    max-width: 100%;
+  .welcome-screen .onboarding-card {
+    position: static;
+    margin-top: 22px;
   }
 }
 
@@ -1911,17 +1919,12 @@ tbody tr:last-child td {
     text-align: left;
   }
 
-  .coach-mark {
-    align-items: flex-start;
+  .onboarding-card {
+    width: 100%;
   }
 
-  .coach-arrow {
-    width: 26px;
-    height: 26px;
-  }
-
-  .coach-bubble {
-    font-size: 12px;
+  .onboarding-card::after {
+    display: none;
   }
 
   .card {
