@@ -289,9 +289,29 @@ select:focus {
   line-height: 1.75;
 }
 
+.quick-start-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 12px;
+}
+
+.guided-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 34px;
+}
+
 .welcome-start-button {
   min-height: 52px;
-  margin-top: 34px;
   padding: 0 26px;
   font-size: 16px;
 }
@@ -300,6 +320,40 @@ select:focus {
   margin-top: 14px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.starter-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(680px, 100%);
+  margin-top: 24px;
+}
+
+.starter-steps span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px;
+  text-align: left;
+}
+
+.starter-steps b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  flex: 0 0 auto;
 }
 
 .recent-projects {
@@ -372,6 +426,89 @@ select:focus {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+}
+
+.coach-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+  color: var(--accent-strong);
+}
+
+.coach-mark.compact {
+  max-width: 230px;
+}
+
+.coach-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+  animation: coach-nudge 1.25s ease-in-out infinite;
+  flex: 0 0 auto;
+}
+
+.coach-arrow[data-direction="down"] {
+  transform: rotate(90deg);
+  animation-name: coach-nudge-down;
+}
+
+.coach-bubble {
+  position: relative;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.coach-bubble::before {
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(15, 118, 110, 0.22);
+  border-bottom: 1px solid rgba(15, 118, 110, 0.22);
+  background: #ffffff;
+  content: "";
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.guided-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@keyframes coach-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes coach-nudge-down {
+  0%,
+  100% {
+    transform: rotate(90deg) translateX(0);
+  }
+  50% {
+    transform: rotate(90deg) translateX(5px);
+  }
 }
 
 .project-list-card {
@@ -651,6 +788,12 @@ select:focus {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace-coach-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 12px;
 }
 
 .workspace-section,
@@ -1640,6 +1783,7 @@ tbody tr:last-child td {
   .factor-picker-list,
   .guide-steps,
   .setup-choice-grid,
+  .starter-steps,
   .wizard-summary-grid,
   .stats-grid,
   .surface-controls {
@@ -1681,6 +1825,24 @@ tbody tr:last-child td {
   .setup-start-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .guided-cta-row,
+  .guided-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .guided-action {
+    width: 100%;
+  }
+
+  .guided-action button {
+    width: 100%;
+  }
+
+  .coach-mark {
+    max-width: 100%;
   }
 }
 
@@ -1742,6 +1904,24 @@ tbody tr:last-child td {
   .welcome-description {
     margin-top: 30px;
     font-size: 16px;
+  }
+
+  .quick-start-note {
+    border-radius: 8px;
+    text-align: left;
+  }
+
+  .coach-mark {
+    align-items: flex-start;
+  }
+
+  .coach-arrow {
+    width: 26px;
+    height: 26px;
+  }
+
+  .coach-bubble {
+    font-size: 12px;
   }
 
   .card {

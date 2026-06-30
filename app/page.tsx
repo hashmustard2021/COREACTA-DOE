@@ -4,6 +4,7 @@ import {
   Fragment,
   FormEvent,
   KeyboardEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -11,14 +12,17 @@ import {
   useState,
 } from "react";
 import {
+  ArrowRight,
   Copy,
   Download,
   FileText,
   FlaskConical,
+  MousePointer2,
   Play,
   RefreshCw,
   Save,
   Send,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import {
@@ -728,6 +732,25 @@ function HelpTip({ label, children }: { label: string; children: string }) {
   );
 }
 
+function CoachMark({
+  children,
+  direction = "right",
+  compact = false,
+}: {
+  children: ReactNode;
+  direction?: "right" | "down";
+  compact?: boolean;
+}) {
+  return (
+    <div className={compact ? "coach-mark compact" : "coach-mark"}>
+      <span className="coach-arrow" data-direction={direction}>
+        <ArrowRight size={18} />
+      </span>
+      <span className="coach-bubble">{children}</span>
+    </div>
+  );
+}
+
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -851,6 +874,17 @@ export default function Home() {
       detail: report ? "리포트 준비됨" : "결과 저장 후 확인",
     },
   ];
+  const wizardCoachText = [
+    "처음이라면 기본 조건 그대로 두고 다음으로 넘어가도 됩니다.",
+    "각 조건마다 단위, 최소값, 최대값만 확인하세요.",
+    "실험 후 비교할 결과 이름과 방향을 정하면 됩니다.",
+    "요약을 확인한 뒤 이 버튼으로 실험표를 만듭니다.",
+  ];
+  const workspaceCoachText = report
+    ? "분석 결과가 준비되었습니다. 추천 조건과 그래프를 아래에서 확인하세요."
+    : completedResultCount > 0
+      ? "결과를 저장했다면 이제 분석 보기를 눌러 다음 조건을 확인하세요."
+      : "실험을 수행한 뒤 이 표에 결과값을 입력하는 것부터 시작하세요.";
 
   const loadProjects = useCallback(async () => {
     try {
@@ -1641,19 +1675,32 @@ export default function Home() {
           <div className="welcome-content">
             <h1>Coreacta DOE</h1>
             <p className="welcome-slogan">감이 아니라 근거로 실험하세요.</p>
+            <div className="quick-start-note" aria-label="처음 시작 안내">
+              <Sparkles size={16} />
+              <span>처음이어도 조건 4개와 측정 결과만 정하면 시작할 수 있습니다.</span>
+            </div>
             <p className="welcome-description">
               실험 조건과 측정 결과를 입력하면
               <br />
               효율적인 실험 순서를 제안합니다.
             </p>
-            <button
-              className="welcome-start-button"
-              type="button"
-              onClick={startNewExperiment}
-            >
-              내 실험 최적화 시작하기
-            </button>
+            <div className="guided-cta-row">
+              <CoachMark direction="right">여기서 새 실험을 시작하세요</CoachMark>
+              <button
+                className="welcome-start-button"
+                type="button"
+                onClick={startNewExperiment}
+              >
+                <MousePointer2 size={17} />
+                내 실험 최적화 시작하기
+              </button>
+            </div>
             <small>예: 온도, 시간, 압력, 농도, 속도 등</small>
+            <div className="starter-steps" aria-label="시작 순서">
+              <span><b>1</b> 바꿔볼 조건 선택</span>
+              <span><b>2</b> 범위 또는 선택값 입력</span>
+              <span><b>3</b> 결과 입력 후 분석 보기</span>
+            </div>
             {projectList.length > 0 && (
               <div className="recent-projects">
                 <span>최근 프로젝트 열기</span>
@@ -1699,6 +1746,9 @@ export default function Home() {
               <p>결과에 영향을 줄 것 같은 조건을 선택하세요. 잘 모르겠다면 기본값 그대로 시작해도 됩니다.</p>
             )}
           </div>
+          <CoachMark direction="down" compact>
+            {wizardCoachText[wizardStep]}
+          </CoachMark>
         </div>
 
         {wizardStep === 0 && (
@@ -1724,7 +1774,10 @@ export default function Home() {
         </div>
         <div className="wizard-actions">
           <button className="secondary-button" type="button" onClick={applyDefaultContinuousFactors} disabled={isBusy}>기본값으로 초기화</button>
-          <button type="button" onClick={proceedFromConditionSelection}>다음: 값 입력</button>
+          <div className="guided-action">
+            <CoachMark compact>다음 버튼을 눌러 값 입력으로 이동합니다</CoachMark>
+            <button type="button" onClick={proceedFromConditionSelection}>다음: 값 입력</button>
+          </div>
         </div>
         </>
         )}
@@ -1761,7 +1814,10 @@ export default function Home() {
         </label>
         <div className="wizard-actions">
           <button className="secondary-button" type="button" onClick={() => goToWizardStep(0)}>이전</button>
-          <button type="button" onClick={proceedFromConditionValues}>다음: 결과 설정</button>
+          <div className="guided-action">
+            <CoachMark compact>입력이 끝났으면 결과 설정으로 갑니다</CoachMark>
+            <button type="button" onClick={proceedFromConditionValues}>다음: 결과 설정</button>
+          </div>
         </div>
         </>
         )}
@@ -1774,7 +1830,10 @@ export default function Home() {
         </div>
         <div className="wizard-actions">
           <button className="secondary-button" type="button" onClick={() => goToWizardStep(1)}>이전</button>
-          <button type="button" onClick={proceedFromResultSettings}>다음: 실험표 생성</button>
+          <div className="guided-action">
+            <CoachMark compact>측정 결과를 정했다면 실험표로 넘어갑니다</CoachMark>
+            <button type="button" onClick={proceedFromResultSettings}>다음: 실험표 생성</button>
+          </div>
         </div>
         </>
         )}
@@ -1813,7 +1872,10 @@ export default function Home() {
         </label>
         <div className="wizard-actions">
           <button className="secondary-button" type="button" onClick={() => goToWizardStep(2)}>이전</button>
-          <button type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
+          <div className="guided-action">
+            <CoachMark compact>여기를 누르면 Workspace가 열립니다</CoachMark>
+            <button type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
+          </div>
         </div>
         </>
         )}
@@ -1879,6 +1941,9 @@ export default function Home() {
               <small>{step.detail}</small>
             </span>
           ))}
+        </div>
+        <div className="workspace-coach-row">
+          <CoachMark direction="right">{workspaceCoachText}</CoachMark>
         </div>
       </section>
 
@@ -1946,14 +2011,19 @@ export default function Home() {
             <p>각 실험 후 얻은 결과값을 입력하세요.</p>
           </div>
           <div className="button-group">
-            <button
-              type="button"
-              onClick={handleSubmitResults}
-              disabled={!project || designRuns.length === 0 || isBusy}
-            >
-              <Send size={16} />
-              결과 저장
-            </button>
+            <div className="guided-action">
+              {completedResultCount === 0 && (
+                <CoachMark compact>실험값을 넣고 먼저 저장하세요</CoachMark>
+              )}
+              <button
+                type="button"
+                onClick={handleSubmitResults}
+                disabled={!project || designRuns.length === 0 || isBusy}
+              >
+                <Send size={16} />
+                결과 저장
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2049,14 +2119,19 @@ export default function Home() {
             <p>중요한 조건, 다음 실험 추천, 시각화와 해석을 한곳에서 확인하세요.</p>
           </div>
           <div className="report-actions">
-            <button
-              type="button"
-              onClick={handleRefreshReport}
-              disabled={!project || isBusy}
-            >
-              <RefreshCw size={16} />
-              분석 보기
-            </button>
+            <div className="guided-action">
+              {completedResultCount > 0 && !report && (
+                <CoachMark compact>저장한 결과로 분석을 확인하세요</CoachMark>
+              )}
+              <button
+                type="button"
+                onClick={handleRefreshReport}
+                disabled={!project || isBusy}
+              >
+                <RefreshCw size={16} />
+                분석 보기
+              </button>
+            </div>
             <button
               className="secondary-button"
               type="button"
