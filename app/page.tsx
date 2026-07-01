@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Fragment,
@@ -44,13 +44,28 @@ const API_BASE_URL =
       ? ""
       : "http://localhost:8000";
 
-const wizardSteps = ["조건 선택", "값 입력", "결과 설정", "실험표 생성"];
-
 type ApiResponse<T> = {
   success: boolean;
   data: T;
   message: string;
 };
+
+const guidedWizardSteps = [
+  "조건 1",
+  "조건 2",
+  "조건 3",
+  "조건 4",
+  "조건 1 값",
+  "조건 2 값",
+  "조건 3 값",
+  "조건 4 값",
+  "측정 결과",
+  "목표",
+  "프로젝트명",
+  "실험표 생성",
+];
+
+const WIZARD_LAST_STEP = guidedWizardSteps.length - 1;
 
 type User = {
   id: number;
@@ -664,6 +679,59 @@ function continuousFactors(factors: FactorInput[]) {
   return factors.filter((factor) => factor.factor_type === "continuous");
 }
 
+function validateSingleCondition(factor: FactorInput) {
+  const errors: Partial<Record<keyof FactorInput, string>> = {};
+  if (!factor.name_kr.trim()) {
+    errors.name_kr = "한글 조건명을 입력해주세요. 예: 온도";
+  }
+  if (!factor.name_en.trim()) {
+    errors.name_en = "영문 조건명을 입력해주세요. 예: Temperature";
+  }
+
+  return {
+    errors,
+    message: Object.keys(errors).length > 0 ? "조건명을 확인해주세요." : "",
+  };
+}
+
+function validateSingleConditionValue(factor: FactorInput) {
+  const errors: Partial<Record<keyof FactorInput, string>> = {};
+
+  if (factor.factor_type === "continuous") {
+    const low = Number(factor.low);
+    const high = Number(factor.high);
+    if (!factor.unit.trim()) {
+      errors.unit = "단위를 입력해주세요. 예: °C, h, mol%";
+    }
+    if (!factor.low.trim()) {
+      errors.low = "최소값을 입력해주세요.";
+    } else if (!Number.isFinite(low)) {
+      errors.low = "숫자로 입력해주세요. 예: 60";
+    }
+    if (!factor.high.trim()) {
+      errors.high = "최대값을 입력해주세요.";
+    } else if (!Number.isFinite(high)) {
+      errors.high = "숫자로 입력해주세요. 예: 90";
+    }
+    if (factor.low.trim() && factor.high.trim() && Number.isFinite(low) && Number.isFinite(high) && low >= high) {
+      errors.low = "최소값은 최대값보다 작아야 합니다.";
+      errors.high = "최대값은 최소값보다 커야 합니다.";
+    }
+  } else {
+    const levels = parseFactorLevels(factor.levels);
+    if (levels.length < 2) {
+      errors.levels = "비교할 후보 2개를 쉼표로 입력해주세요. 예: THF, Toluene";
+    } else if (levels.length > 2) {
+      errors.levels = "현재 v2 MVP에서는 후보 조건은 2개만 지원합니다.";
+    }
+  }
+
+  return {
+    errors,
+    message: Object.keys(errors).length > 0 ? "조건 값을 확인해주세요." : "",
+  };
+}
+
 function defaultContinuousFields(idx: number) {
   const fallback = defaultFactors.find((factor) => factor.idx === idx);
   return {
@@ -942,6 +1010,12 @@ export default function Home() {
         ];
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
   const showTour = currentUser && !isTourDismissed && activeTourStep;
+  const conditionStepIndex = wizardStep >= 0 && wizardStep <= 3 ? wizardStep : null;
+  const valueStepIndex = wizardStep >= 4 && wizardStep <= 7 ? wizardStep - 4 : null;
+  const activeConditionIndex = conditionStepIndex ?? valueStepIndex ?? 0;
+  const activeFactor = factors[activeConditionIndex] ?? factors[0];
+  const activeFactorErrors = activeFactor ? factorErrors[activeFactor.idx] ?? {} : {};
+  const activeFactorKey = factorKeys[activeConditionIndex] ?? String(activeConditionIndex + 1);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -1123,30 +1197,41 @@ export default function Home() {
   function goToWizardStep(nextStep: number) {
     setErrorText("");
     setStatusText("");
-    setWizardStep(nextStep);
-    setTourStep(nextStep);
+    const clampedStep = Math.max(0, Math.min(nextStep, WIZARD_LAST_STEP));
+    setWizardStep(clampedStep);
+    setTourStep(Math.min(clampedStep, 3));
   }
 
-  function proceedFromConditionSelection() {
-    const validationResult = validateConditionSelection(factors);
-    setFactorErrors(validationResult.errors);
+  function proceedFromConditionDetail(index: number) {
+    const factor = factors[index];
+    if (!factor) return;
+    const validationResult = validateSingleCondition(factor);
+    setFactorErrors((current) => ({
+      ...current,
+      [factor.idx]: validationResult.errors,
+    }));
     if (validationResult.message) {
       setErrorText(validationResult.message);
       setStatusText("");
       return;
     }
-    goToWizardStep(1);
+    goToWizardStep(index + 1);
   }
 
-  function proceedFromConditionValues() {
-    const validationResult = validateFactorsForSubmit(factors);
-    setFactorErrors(validationResult.errors);
+  function proceedFromConditionValue(index: number) {
+    const factor = factors[index];
+    if (!factor) return;
+    const validationResult = validateSingleConditionValue(factor);
+    setFactorErrors((current) => ({
+      ...current,
+      [factor.idx]: validationResult.errors,
+    }));
     if (validationResult.message) {
       setErrorText(validationResult.message);
       setStatusText("");
       return;
     }
-    goToWizardStep(2);
+    goToWizardStep(index + 5);
   }
 
   function proceedFromResultSettings() {
@@ -1155,7 +1240,20 @@ export default function Home() {
       setStatusText("");
       return;
     }
-    goToWizardStep(3);
+    goToWizardStep(9);
+  }
+
+  function proceedFromGoalSettings() {
+    goToWizardStep(10);
+  }
+
+  function proceedFromProjectName() {
+    if (!projectName.trim()) {
+      setErrorText("프로젝트명을 입력해주세요.");
+      setStatusText("");
+      return;
+    }
+    goToWizardStep(11);
   }
 
   function focusNextYieldInput(
@@ -1199,6 +1297,9 @@ export default function Home() {
 
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (wizardStep !== WIZARD_LAST_STEP) {
+      return;
+    }
     const validationResult = validateFactorsForSubmit(factors);
     setFactorErrors(validationResult.errors);
     if (validationResult.message) {
@@ -1742,10 +1843,23 @@ export default function Home() {
               <span>처음이어도 조건 4개와 측정 결과만 정하면 시작할 수 있습니다.</span>
             </div>
             <p className="welcome-description">
-              실험 조건과 측정 결과를 입력하면
-              <br />
-              효율적인 실험 순서를 제안합니다.
+              바꿔볼 조건을 하나씩 고르면 Coreacta DOE가 먼저 수행할 실험 조합을 만듭니다.
+              결과를 입력하면 중요한 조건과 다음 실험 방향까지 이어서 확인할 수 있습니다.
             </p>
+            <div className="welcome-explainer" aria-label="서비스 설명">
+              <span>
+                <strong>조건을 고릅니다</strong>
+                온도, 시간, 농도처럼 바꿔볼 값을 정합니다.
+              </span>
+              <span>
+                <strong>실험표를 받습니다</strong>
+                모든 조합을 다 해보지 않아도 되는 순서를 제안합니다.
+              </span>
+              <span>
+                <strong>결과를 비교합니다</strong>
+                측정값을 넣으면 어떤 조건이 중요한지 보여줍니다.
+              </span>
+            </div>
             <button
               className="welcome-start-button tour-target"
               type="button"
@@ -1799,164 +1913,207 @@ export default function Home() {
       )}
 
       {isIntroComplete && !project && (
-      <form className="card setup-card wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
-        <div className="wizard-progress" aria-label="실험 생성 단계">
-          {wizardSteps.map((step, index) => (
-            <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step}>
-              {index + 1} {step}
+      <form className="card setup-card wizard-card guided-wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
+        <div className="wizard-progress compact-progress" aria-label="실험 생성 단계">
+          {guidedWizardSteps.map((step, index) => (
+            <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step} title={step}>
+              {index + 1}
             </span>
           ))}
         </div>
-        <div className="card-heading">
-          <div>
-            <span>{wizardSteps[wizardStep]}</span>
-            <h2>
-              {wizardStep === 0 && "바꿔볼 조건 4개를 골라주세요"}
-              {wizardStep === 1 && "각 조건의 범위를 입력해주세요"}
-              {wizardStep === 2 && "무엇을 비교할까요?"}
-              {wizardStep === 3 && "실험표를 생성할 준비가 되었습니다"}
-            </h2>
-            {wizardStep === 0 && (
-              <p>결과에 영향을 줄 것 같은 조건을 선택하세요. 잘 모르겠다면 기본값 그대로 시작해도 됩니다.</p>
-            )}
-          </div>
-        </div>
-        {showTour && (
-          <OnboardingCard
-            step={Math.min(tourStep, tourSteps.length - 1) + 1}
-            total={tourSteps.length}
-            title={activeTourStep.title}
-            body={activeTourStep.body}
-            onNext={() => {
-              if (tourStep >= tourSteps.length - 1) {
-                setIsTourDismissed(true);
-                return;
-              }
-              setTourStep((current) => current + 1);
-            }}
-            onClose={() => setIsTourDismissed(true)}
-          />
-        )}
 
-        {wizardStep === 0 && (
-        <>
-        <div className="factor-grid condition-select-grid">
-          {factors.map((factor, index) => {
-            const errors = factorErrors[factor.idx] ?? {};
-            return (
-              <article className="factor-row" key={factor.idx}>
+        <div className="wizard-step-shell">
+          <div className="wizard-step-copy">
+            <span>{wizardStep + 1} / {guidedWizardSteps.length}</span>
+            <h2>
+              {conditionStepIndex !== null && `바꿔볼 조건 ${conditionStepIndex + 1}을 정해주세요`}
+              {valueStepIndex !== null && `${activeFactor.name_kr || `조건 ${valueStepIndex + 1}`}의 값을 입력해주세요`}
+              {wizardStep === 8 && "무엇을 비교할까요?"}
+              {wizardStep === 9 && "어떤 방향이 좋은 결과인가요?"}
+              {wizardStep === 10 && "프로젝트 이름을 정해주세요"}
+              {wizardStep === 11 && "실험표를 생성할 준비가 되었습니다"}
+            </h2>
+            <p>
+              {conditionStepIndex !== null && "결과에 영향을 줄 것 같은 조건을 하나만 확인하세요. 잘 모르겠다면 기본값 그대로 다음으로 넘어가도 됩니다."}
+              {valueStepIndex !== null && "이 조건에서 비교할 두 끝값을 입력합니다. 선택형 조건은 후보 2개만 적으면 됩니다."}
+              {wizardStep === 8 && "실험 후 매번 기록할 측정 결과 이름을 하나 입력합니다."}
+              {wizardStep === 9 && "측정 결과가 커질수록 좋은지, 작아질수록 좋은지만 선택합니다."}
+              {wizardStep === 10 && "나중에 다시 찾기 쉬운 이름을 붙여주세요."}
+              {wizardStep === 11 && "입력한 조건과 측정 결과를 확인한 뒤 실험표를 생성합니다."}
+            </p>
+          </div>
+
+          <div className="single-input-panel">
+            {showTour && (
+              <OnboardingCard
+                step={Math.min(tourStep, tourSteps.length - 1) + 1}
+                total={tourSteps.length}
+                title={activeTourStep.title}
+                body={activeTourStep.body}
+                onNext={() => {
+                  if (tourStep >= tourSteps.length - 1) {
+                    setIsTourDismissed(true);
+                    return;
+                  }
+                  setTourStep((current) => current + 1);
+                }}
+                onClose={() => setIsTourDismissed(true)}
+              />
+            )}
+
+            {conditionStepIndex !== null && (
+              <article className="factor-row focus-factor-card">
                 <div className="factor-row-heading">
-                  <strong>조건 {index + 1}</strong>
-                  <span>{factor.factor_type === "continuous" ? "숫자 범위형" : "선택형"}</span>
+                  <strong>조건 {conditionStepIndex + 1}</strong>
+                  <span>{activeFactor.factor_type === "continuous" ? "숫자 범위형" : "선택형"}</span>
                 </div>
-                <div className="factor-fields">
-                  <label className="factor-cell"><span>기본 조건</span><select value={factorPresetId(factor)} onChange={(event) => applyFactorPreset(index, event.target.value as FactorPresetId)}>{factorPresetOptions.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.description}</option>)}</select></label>
-                  <label className="factor-cell"><span>조건 유형</span><select value={factor.factor_type} onChange={(event) => updateFactor(index, "factor_type", event.target.value)}><option value="continuous">숫자 범위형</option><option value="categorical">선택형</option></select></label>
-                  <label className="factor-cell"><span>조건명</span><input className={errors.name_kr ? "invalid-input" : ""} value={factor.name_kr} placeholder="예: 온도" onChange={(event) => updateFactor(index, "name_kr", event.target.value)} aria-invalid={Boolean(errors.name_kr)} required />{errors.name_kr && <small className="field-error">{errors.name_kr}</small>}</label>
-                  <label className="factor-cell"><span>영문명</span><input className={errors.name_en ? "invalid-input" : ""} value={factor.name_en} placeholder="예: Temperature" onChange={(event) => updateFactor(index, "name_en", event.target.value)} aria-invalid={Boolean(errors.name_en)} required />{errors.name_en && <small className="field-error">{errors.name_en}</small>}</label>
+                <div className="factor-fields single-factor-fields">
+                  <label className="factor-cell">
+                    <span>기본 조건</span>
+                    <select value={factorPresetId(activeFactor)} onChange={(event) => applyFactorPreset(conditionStepIndex, event.target.value as FactorPresetId)}>
+                      {factorPresetOptions.map((option) => (
+                        <option key={option.id} value={option.id}>{option.label} · {option.description}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="factor-cell">
+                    <span>조건 유형</span>
+                    <select value={activeFactor.factor_type} onChange={(event) => updateFactor(conditionStepIndex, "factor_type", event.target.value)}>
+                      <option value="continuous">숫자 범위형</option>
+                      <option value="categorical">선택형</option>
+                    </select>
+                  </label>
+                  <label className="factor-cell">
+                    <span>조건명</span>
+                    <input className={activeFactorErrors.name_kr ? "invalid-input" : ""} value={activeFactor.name_kr} placeholder="예: 온도" onChange={(event) => updateFactor(conditionStepIndex, "name_kr", event.target.value)} aria-invalid={Boolean(activeFactorErrors.name_kr)} required />
+                    {activeFactorErrors.name_kr && <small className="field-error">{activeFactorErrors.name_kr}</small>}
+                  </label>
+                  <label className="factor-cell">
+                    <span>영문명</span>
+                    <input className={activeFactorErrors.name_en ? "invalid-input" : ""} value={activeFactor.name_en} placeholder="예: Temperature" onChange={(event) => updateFactor(conditionStepIndex, "name_en", event.target.value)} aria-invalid={Boolean(activeFactorErrors.name_en)} required />
+                    {activeFactorErrors.name_en && <small className="field-error">{activeFactorErrors.name_en}</small>}
+                  </label>
                 </div>
               </article>
-            );
-          })}
-        </div>
-        <div className="wizard-actions">
-          <button className="secondary-button" type="button" onClick={applyDefaultContinuousFactors} disabled={isBusy}>기본값으로 초기화</button>
-          <button className="tour-target" type="button" onClick={proceedFromConditionSelection}>다음: 값 입력</button>
-        </div>
-        </>
-        )}
+            )}
 
-        {wizardStep === 1 && (
-        <>
-        <div className="factor-grid">
-          {factors.map((factor, index) => {
-            const errors = factorErrors[factor.idx] ?? {};
-            return (
-              <article className="factor-row" key={factor.idx}>
+            {valueStepIndex !== null && (
+              <article className="factor-row focus-factor-card">
                 <div className="factor-row-heading">
-                  <strong>조건 {factorKeys[index]}</strong>
-                  <span>{factor.name_kr} / {factor.name_en}</span>
+                  <strong>조건 {activeFactorKey}</strong>
+                  <span>{activeFactor.name_kr} / {activeFactor.name_en}</span>
                 </div>
-                <div className="factor-fields">
-                  {factor.factor_type === "continuous" ? (
+                <div className="factor-fields single-factor-fields">
+                  {activeFactor.factor_type === "continuous" ? (
                     <>
-                      <label className="factor-cell"><span>단위</span><input className={errors.unit ? "invalid-input" : ""} value={factor.unit} placeholder="예: °C" onChange={(event) => updateFactor(index, "unit", event.target.value)} aria-invalid={Boolean(errors.unit)} required />{errors.unit && <small className="field-error">{errors.unit}</small>}</label>
-                      <label className="factor-cell"><span>최소값</span><input className={errors.low ? "numeric-input invalid-input" : "numeric-input"} value={factor.low} placeholder="예: 60" onChange={(event) => updateFactor(index, "low", event.target.value)} aria-invalid={Boolean(errors.low)} required />{errors.low && <small className="field-error">{errors.low}</small>}</label>
-                      <label className="factor-cell"><span>최대값</span><input className={errors.high ? "numeric-input invalid-input" : "numeric-input"} value={factor.high} placeholder="예: 90" onChange={(event) => updateFactor(index, "high", event.target.value)} aria-invalid={Boolean(errors.high)} required />{errors.high && <small className="field-error">{errors.high}</small>}</label>
+                      <label className="factor-cell">
+                        <span>단위</span>
+                        <input className={activeFactorErrors.unit ? "invalid-input" : ""} value={activeFactor.unit} placeholder="예: °C" onChange={(event) => updateFactor(valueStepIndex, "unit", event.target.value)} aria-invalid={Boolean(activeFactorErrors.unit)} required />
+                        {activeFactorErrors.unit && <small className="field-error">{activeFactorErrors.unit}</small>}
+                      </label>
+                      <label className="factor-cell">
+                        <span>최소값</span>
+                        <input className={activeFactorErrors.low ? "numeric-input invalid-input" : "numeric-input"} value={activeFactor.low} placeholder="예: 60" onChange={(event) => updateFactor(valueStepIndex, "low", event.target.value)} aria-invalid={Boolean(activeFactorErrors.low)} required />
+                        {activeFactorErrors.low && <small className="field-error">{activeFactorErrors.low}</small>}
+                      </label>
+                      <label className="factor-cell">
+                        <span>최대값</span>
+                        <input className={activeFactorErrors.high ? "numeric-input invalid-input" : "numeric-input"} value={activeFactor.high} placeholder="예: 90" onChange={(event) => updateFactor(valueStepIndex, "high", event.target.value)} aria-invalid={Boolean(activeFactorErrors.high)} required />
+                        {activeFactorErrors.high && <small className="field-error">{activeFactorErrors.high}</small>}
+                      </label>
                     </>
                   ) : (
-                    <label className="factor-cell factor-levels"><span>선택값 2개</span><input className={errors.levels ? "invalid-input" : ""} value={factor.levels} onChange={(event) => updateFactor(index, "levels", event.target.value)} placeholder="예: A, B" aria-invalid={Boolean(errors.levels)} required />{errors.levels && <small className="field-error">{errors.levels}</small>}</label>
+                    <label className="factor-cell factor-levels">
+                      <span>선택값 2개</span>
+                      <input className={activeFactorErrors.levels ? "invalid-input" : ""} value={activeFactor.levels} onChange={(event) => updateFactor(valueStepIndex, "levels", event.target.value)} placeholder="예: THF, Toluene" aria-invalid={Boolean(activeFactorErrors.levels)} required />
+                      {activeFactorErrors.levels && <small className="field-error">{activeFactorErrors.levels}</small>}
+                    </label>
                   )}
                 </div>
               </article>
-            );
-          })}
-        </div>
-        <label className="center-option">
-          <input type="checkbox" checked={includeCenterPoints && hasContinuousFactor} onChange={(event) => setIncludeCenterPoints(event.target.checked)} disabled={!hasContinuousFactor} />
-          <span className="label-with-help">중간값 확인 실험 3회 추가<HelpTip label="중간값 확인 실험 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
-        </label>
-        <div className="wizard-actions">
-          <button className="secondary-button" type="button" onClick={() => goToWizardStep(0)}>이전</button>
-          <button className="tour-target" type="button" onClick={proceedFromConditionValues}>다음: 결과 설정</button>
-        </div>
-        </>
-        )}
+            )}
 
-        {wizardStep === 2 && (
-        <>
-        <div className="project-meta-grid result-settings-grid">
-          <label className="field"><span>측정 결과</span><input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="수율, 휘도, 점도, 용량 등" /></label>
-          <label className="field"><span>목표</span><select value={projectGoal} onChange={(event) => setProjectGoal(normalizeGoal(event.target.value))}><option value="maximize">크게 만들기</option><option value="minimize">작게 만들기</option></select></label>
-        </div>
-        <div className="wizard-actions">
-          <button className="secondary-button" type="button" onClick={() => goToWizardStep(1)}>이전</button>
-          <button className="tour-target" type="button" onClick={proceedFromResultSettings}>다음: 실험표 생성</button>
-        </div>
-        </>
-        )}
+            {wizardStep === 8 && (
+              <label className="field single-field">
+                <span>측정 결과 이름</span>
+                <input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="예: 수율, 휘도, 점도, 용량" />
+              </label>
+            )}
 
-        {wizardStep === 3 && (
-        <>
-        <div className="wizard-summary-grid">
-          <section className="wizard-summary-panel">
-            <span>선택한 조건</span>
-            {factors.map((factor) => (
-              <div className="wizard-summary-item" key={factor.idx}>
-                <strong>{factor.name_kr} / {factor.name_en}</strong>
-                <small>
-                  {factor.factor_type === "continuous"
-                    ? `숫자 범위형 · ${factor.low} - ${factor.high} ${factor.unit}`
-                    : `선택형 · ${parseFactorLevels(factor.levels).join(", ")}`}
-                </small>
+            {wizardStep === 9 && (
+              <div className="choice-panel" role="radiogroup" aria-label="목표 선택">
+                <button className={projectGoal === "maximize" ? "choice-card active" : "choice-card"} type="button" onClick={() => setProjectGoal("maximize")}>
+                  <strong>크게 만들기</strong>
+                  <span>값이 높을수록 좋은 결과입니다.</span>
+                </button>
+                <button className={projectGoal === "minimize" ? "choice-card active" : "choice-card"} type="button" onClick={() => setProjectGoal("minimize")}>
+                  <strong>작게 만들기</strong>
+                  <span>값이 낮을수록 좋은 결과입니다.</span>
+                </button>
               </div>
-            ))}
-          </section>
-          <section className="wizard-summary-panel">
-            <span>측정 결과</span>
-            <div className="wizard-summary-item">
-              <strong>{responseName || "Result"}</strong>
-              <small>{projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</small>
-            </div>
-            <div className="wizard-summary-item">
-              <strong>{includeCenterPoints && hasContinuousFactor ? "11회 실험" : "8회 실험"}</strong>
-              <small>{includeCenterPoints && hasContinuousFactor ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
-            </div>
-          </section>
+            )}
+
+            {wizardStep === 10 && (
+              <label className="field single-field">
+                <span>프로젝트명</span>
+                <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="예: 온도-농도 최적화 실험" required />
+              </label>
+            )}
+
+            {wizardStep === 11 && (
+              <div className="wizard-summary-grid">
+                <section className="wizard-summary-panel">
+                  <span>선택한 조건</span>
+                  {factors.map((factor) => (
+                    <div className="wizard-summary-item" key={factor.idx}>
+                      <strong>{factor.name_kr} / {factor.name_en}</strong>
+                      <small>
+                        {factor.factor_type === "continuous"
+                          ? `숫자 범위형 · ${factor.low} - ${factor.high} ${factor.unit}`
+                          : `선택형 · ${parseFactorLevels(factor.levels).join(", ")}`}
+                      </small>
+                    </div>
+                  ))}
+                </section>
+                <section className="wizard-summary-panel">
+                  <span>측정 결과</span>
+                  <div className="wizard-summary-item">
+                    <strong>{responseName || "Result"}</strong>
+                    <small>{projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</small>
+                  </div>
+                  <label className="center-option">
+                    <input type="checkbox" checked={includeCenterPoints && hasContinuousFactor} onChange={(event) => setIncludeCenterPoints(event.target.checked)} disabled={!hasContinuousFactor} />
+                    <span className="label-with-help">중간값 확인 실험 3회 추가<HelpTip label="중간값 확인 실험 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
+                  </label>
+                  <div className="wizard-summary-item">
+                    <strong>{includeCenterPoints && hasContinuousFactor ? "11회 실험" : "8회 실험"}</strong>
+                    <small>{includeCenterPoints && hasContinuousFactor ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
         </div>
-        <label className="field project-name">
-          <span>프로젝트명</span>
-          <input value={projectName} onChange={(event) => setProjectName(event.target.value)} required />
-        </label>
+
         <div className="wizard-actions">
-          <button className="secondary-button" type="button" onClick={() => goToWizardStep(2)}>이전</button>
-          <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>
+          <button className="secondary-button" type="button" onClick={() => goToWizardStep(wizardStep - 1)} disabled={wizardStep === 0 || isBusy}>이전</button>
+          {conditionStepIndex !== null && (
+            <button className="tour-target" type="button" onClick={() => proceedFromConditionDetail(conditionStepIndex)}>
+              {conditionStepIndex === 3 ? "조건 값 입력하기" : "다음 조건"}
+            </button>
+          )}
+          {valueStepIndex !== null && (
+            <button className="tour-target" type="button" onClick={() => proceedFromConditionValue(valueStepIndex)}>
+              {valueStepIndex === 3 ? "측정 결과 정하기" : "다음 조건 값"}
+            </button>
+          )}
+          {wizardStep === 8 && <button className="tour-target" type="button" onClick={proceedFromResultSettings}>목표 정하기</button>}
+          {wizardStep === 9 && <button className="tour-target" type="button" onClick={proceedFromGoalSettings}>프로젝트명 정하기</button>}
+          {wizardStep === 10 && <button className="tour-target" type="button" onClick={proceedFromProjectName}>요약 확인하기</button>}
+          {wizardStep === 11 && <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>}
         </div>
-        </>
-        )}
       </form>
       )}
-
       {project && (
       <>
       <section className="card workspace-header-card">
