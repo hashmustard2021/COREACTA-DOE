@@ -67,6 +67,13 @@ const guidedWizardSteps = [
 
 const WIZARD_LAST_STEP = guidedWizardSteps.length - 1;
 
+const objectiveSuggestions = [
+  { label: "수율 높이기", prompt: "수율을 높이고 싶어요" },
+  { label: "점도 낮추기", prompt: "점도를 낮추고 싶어요" },
+  { label: "휘도 높이기", prompt: "휘도를 높이고 싶어요" },
+  { label: "저항 낮추기", prompt: "저항을 낮추고 싶어요" },
+];
+
 type User = {
   id: number;
   username: string;
@@ -756,6 +763,38 @@ function normalizeGoal(goal?: string): "maximize" | "minimize" {
   return goal === "minimize" ? "minimize" : "maximize";
 }
 
+function inferObjectiveFromText(intent: string) {
+  const normalized = intent.trim();
+  const lowerIntent = normalized.toLowerCase();
+  const goal: "maximize" | "minimize" =
+    /낮|줄|작|감소|최소|min|low|reduce|decrease|smaller/.test(lowerIntent)
+      ? "minimize"
+      : "maximize";
+  const candidates = [
+    "수율",
+    "휘도",
+    "점도",
+    "용량",
+    "접착력",
+    "저항",
+    "강도",
+    "순도",
+    "효율",
+    "비용",
+    "시간",
+  ];
+  const response = candidates.find((candidate) => normalized.includes(candidate));
+  const fallback = normalized
+    .replace(/을|를|이|가|은|는|하고|싶어요|싶습니다|높이고|낮추고|줄이고|키우고|늘리고|최적화|개선/g, " ")
+    .trim()
+    .split(/\s+/)[0];
+
+  return {
+    responseName: response || fallback || "Result",
+    goal,
+  };
+}
+
 function heatColor(value: number, min: number, max: number) {
   if (max === min) return "hsl(174, 50%, 60%)";
   const ratio = (value - min) / (max - min);
@@ -840,6 +879,7 @@ export default function Home() {
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [experimentIntent, setExperimentIntent] = useState("");
   const [projectName, setProjectName] = useState("New experiment");
   const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
   const [responseName, setResponseName] = useState("Result");
@@ -996,16 +1036,16 @@ export default function Home() {
         ]
       : [
           {
-            title: "여기서 새 실험을 시작하세요",
-            body: "Coreacta DOE는 조건 4개와 측정 결과만 정하면 먼저 해볼 실험표를 만들어줍니다.",
+            title: "먼저 목표를 한 문장으로 적어보세요",
+            body: "수율을 높이고 싶어요처럼 쓰면 측정 결과와 방향을 먼저 잡아둡니다.",
           },
           {
-            title: "기본값 그대로 시작해도 됩니다",
-            body: "온도, 시간, 농도, 속도 예시가 준비되어 있어 처음이라도 바로 진행할 수 있습니다.",
+            title: "예시를 눌러 시작해도 됩니다",
+            body: "처음이라면 추천 목표를 선택하고 바로 실험 설정으로 넘어가세요.",
           },
           {
-            title: "결과를 넣으면 다음 조건을 추천합니다",
-            body: "실험 후 얻은 값을 입력하면 중요한 조건과 다음 실험 후보를 보여줍니다.",
+            title: "다음 화면부터는 하나씩만 묻습니다",
+            body: "조건 하나, 값 하나씩 따라가면 실험표와 분석까지 이어집니다.",
           },
         ];
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
@@ -1420,6 +1460,7 @@ export default function Home() {
     setProject(null);
     setProjectName("New experiment");
     setProjectSlogan("감이 아니라 근거로 실험하세요.");
+    setExperimentIntent("");
     setResponseName("Result");
     setProjectGoal("maximize");
     setFactors(defaultFactors);
@@ -1438,8 +1479,16 @@ export default function Home() {
     setTourStep(0);
   }
 
-  function startNewExperiment() {
+  function startNewExperiment(intentOverride?: string) {
+    const nextIntent = typeof intentOverride === "string" ? intentOverride : experimentIntent;
+    const inferredObjective = inferObjectiveFromText(nextIntent);
     resetProjectState();
+    setExperimentIntent(nextIntent);
+    if (nextIntent.trim()) {
+      setResponseName(inferredObjective.responseName);
+      setProjectGoal(inferredObjective.goal);
+      setProjectName(`${inferredObjective.responseName} ${inferredObjective.goal === "maximize" ? "향상" : "저감"} 실험`);
+    }
     setIsIntroComplete(true);
     setIsSetupStarted(true);
     setWizardStep(0);
@@ -1837,41 +1886,50 @@ export default function Home() {
 
           <div className="welcome-content">
             <h1>Coreacta DOE</h1>
-            <p className="welcome-slogan">감이 아니라 근거로 실험하세요.</p>
+            <p className="welcome-slogan">무엇을 더 좋게 만들고 싶나요?</p>
             <div className="quick-start-note" aria-label="처음 시작 안내">
               <Sparkles size={16} />
-              <span>처음이어도 조건 4개와 측정 결과만 정하면 시작할 수 있습니다.</span>
+              <span>목적을 한 문장으로 말하면 조건 설정을 하나씩 안내합니다.</span>
             </div>
             <p className="welcome-description">
-              바꿔볼 조건을 하나씩 고르면 Coreacta DOE가 먼저 수행할 실험 조합을 만듭니다.
-              결과를 입력하면 중요한 조건과 다음 실험 방향까지 이어서 확인할 수 있습니다.
+              예를 들어 수율을 높이고 싶다거나 점도를 낮추고 싶다고 적어보세요.
+              Coreacta DOE가 측정 결과와 목표를 먼저 잡고, 그다음 조건을 하나씩 묻습니다.
             </p>
-            <div className="welcome-explainer" aria-label="서비스 설명">
-              <span>
-                <strong>조건을 고릅니다</strong>
-                온도, 시간, 농도처럼 바꿔볼 값을 정합니다.
-              </span>
-              <span>
-                <strong>실험표를 받습니다</strong>
-                모든 조합을 다 해보지 않아도 되는 순서를 제안합니다.
-              </span>
-              <span>
-                <strong>결과를 비교합니다</strong>
-                측정값을 넣으면 어떤 조건이 중요한지 보여줍니다.
-              </span>
-            </div>
-            <button
-              className="welcome-start-button tour-target"
-              type="button"
-              onClick={startNewExperiment}
+            <form
+              className="intent-composer"
+              onSubmit={(event) => {
+                event.preventDefault();
+                startNewExperiment();
+              }}
             >
-              내 실험 최적화 시작하기
-            </button>
-            <small>예: 온도, 시간, 압력, 농도, 속도 등</small>
+              <label>
+                <span>실험 목표</span>
+                <input
+                  value={experimentIntent}
+                  onChange={(event) => setExperimentIntent(event.target.value)}
+                  placeholder="예: 수율을 높이고 싶어요"
+                />
+              </label>
+              <div className="intent-suggestions" aria-label="목표 예시">
+                {objectiveSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.label}
+                    type="button"
+                    onClick={() => setExperimentIntent(suggestion.prompt)}
+                  >
+                    {suggestion.label}
+                  </button>
+                ))}
+              </div>
+              <button className="welcome-start-button tour-target" type="submit">
+                실험 설정 시작
+              </button>
+            </form>
+            <small>나중에 조건명, 범위, 측정 결과는 모두 수정할 수 있습니다.</small>
             <div className="starter-steps" aria-label="시작 순서">
-              <span><b>1</b> 바꿔볼 조건 선택</span>
-              <span><b>2</b> 범위 또는 선택값 입력</span>
-              <span><b>3</b> 결과 입력 후 분석 보기</span>
+              <span><b>1</b> 목표 말하기</span>
+              <span><b>2</b> 조건 하나씩 정하기</span>
+              <span><b>3</b> 실험표 받고 분석하기</span>
             </div>
             {projectList.length > 0 && (
               <div className="recent-projects">

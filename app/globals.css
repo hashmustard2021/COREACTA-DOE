@@ -262,7 +262,7 @@ select:focus {
 .welcome-content {
   display: grid;
   justify-items: center;
-  width: min(620px, 100%);
+  width: min(760px, 100%);
   padding: 64px 20px;
   text-align: center;
 }
@@ -283,10 +283,68 @@ select:focus {
 }
 
 .welcome-description {
-  margin: 38px 0 0;
+  max-width: 680px;
+  margin: 28px 0 0;
   color: var(--muted);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.intent-composer {
+  display: grid;
+  justify-items: center;
+  width: min(680px, 100%);
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.intent-composer label {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  text-align: left;
+}
+
+.intent-composer label > span {
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.intent-composer input {
+  min-height: 62px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   font-size: 18px;
-  line-height: 1.75;
+  padding: 0 18px;
+}
+
+.intent-composer input::placeholder {
+  color: #9aa7b4;
+}
+
+.intent-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.intent-suggestions button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--muted);
+  padding: 6px 11px;
+  font-size: 13px;
+}
+
+.intent-suggestions button:hover {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .welcome-explainer {
@@ -332,7 +390,7 @@ select:focus {
 
 .welcome-start-button {
   min-height: 52px;
-  margin-top: 34px;
+  margin-top: 4px;
   padding: 0 26px;
   font-size: 16px;
 }
@@ -2083,6 +2141,15 @@ tbody tr:last-child td {
   .welcome-description {
     margin-top: 30px;
     font-size: 16px;
+  }
+
+  .intent-composer input {
+    min-height: 56px;
+    font-size: 16px;
+  }
+
+  .intent-suggestions {
+    justify-content: flex-start;
   }
 
   .quick-start-note {
