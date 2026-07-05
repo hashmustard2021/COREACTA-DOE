@@ -1079,7 +1079,7 @@ export default function Home() {
         ];
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
   const showTour = currentUser && isIntroComplete && !isTourDismissed && activeTourStep;
-  const introSteps = ["서비스 소개", "진행 방식", "목표 입력"];
+  const introSteps = ["소개", "목표", "조건", "분석", "시작"];
   const wizardPhaseIndex = wizardStep <= 3 ? 0 : wizardStep <= 7 ? 1 : wizardStep <= 10 ? 2 : 3;
   const conditionStepIndex = wizardStep >= 0 && wizardStep <= 3 ? wizardStep : null;
   const valueStepIndex = wizardStep >= 4 && wizardStep <= 7 ? wizardStep - 4 : null;
@@ -1973,39 +1973,33 @@ export default function Home() {
           </div>
 
           <div className="welcome-content">
-            <div className="intro-progress" aria-label="첫 화면 안내 단계">
-              {introSteps.map((step, index) => (
-                <button
-                  key={step}
-                  className={index === introStep ? "active" : index < introStep ? "complete" : ""}
-                  type="button"
-                  onClick={() => setIntroStep(index)}
-                >
-                  {step}
-                </button>
-              ))}
-            </div>
+            {introStep > 0 && (
+              <div className="intro-progress" aria-label="첫 화면 안내 단계">
+                {introSteps.map((step, index) => (
+                  <button
+                    key={step}
+                    className={index === introStep ? "active" : index < introStep ? "complete" : ""}
+                    type="button"
+                    onClick={() => setIntroStep(index)}
+                    aria-current={index === introStep ? "step" : undefined}
+                  >
+                    {step}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {introStep === 0 && (
-              <div className="intro-panel">
+              <div className="intro-panel intro-panel-first">
                 <h1>Coreacta DOE</h1>
-                <p className="welcome-slogan">실험 조건을 정리해 실험표와 분석을 만들어주는 도우미입니다.</p>
-                <p className="welcome-description">
-                  무엇을 좋게 만들고 싶은지만 알려주세요. Coreacta DOE가 조건을 하나씩 묻고,
-                  먼저 해볼 실험 조합을 만든 뒤 결과를 분석합니다.
-                </p>
-                <div className="service-flow-strip" aria-label="서비스 흐름">
-                  <span>목표 입력</span>
-                  <span>실험표 생성</span>
-                  <span>결과 분석</span>
-                </div>
+                <p className="welcome-slogan">실험을 덜 헤매고 더 근거 있게 진행하도록 돕습니다.</p>
                 <div className="intro-actions">
                   <button
                     className="welcome-start-button"
                     type="button"
                     onClick={() => setIntroStep(1)}
                   >
-                    진행 방식 보기
+                    무엇을 해주는지 보기
                   </button>
                 </div>
               </div>
@@ -2013,15 +2007,9 @@ export default function Home() {
 
             {introStep === 1 && (
               <div className="intro-panel">
-                <h1>하나씩만 정하면 됩니다</h1>
-                <p className="welcome-slogan">처음에는 복잡한 DOE 용어를 몰라도 괜찮아요.</p>
-                <div className="starter-steps" aria-label="시작 순서">
-                  <span><b>1</b> 무엇을 개선할지 말하기</span>
-                  <span><b>2</b> 조건과 값을 하나씩 정하기</span>
-                  <span><b>3</b> 실험표를 받고 결과 분석하기</span>
-                </div>
-                <p className="welcome-description compact">
-                  조건명, 범위, 측정 결과는 나중에도 수정할 수 있어요.
+                <h1>먼저 목표를 말해요</h1>
+                <p className="welcome-description">
+                  “수율을 높이고 싶어요”처럼 원하는 결과를 한 문장으로 적습니다.
                 </p>
                 <div className="intro-actions">
                   <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>
@@ -2032,7 +2020,7 @@ export default function Home() {
                     type="button"
                     onClick={() => setIntroStep(2)}
                   >
-                    실험 목표 입력하기
+                    다음 안내 보기
                   </button>
                 </div>
               </div>
@@ -2040,10 +2028,52 @@ export default function Home() {
 
             {introStep === 2 && (
               <div className="intro-panel">
+                <h1>조건을 하나씩 정해요</h1>
+                <p className="welcome-description">
+                  온도, 시간, 농도처럼 바꿔볼 조건을 한 화면에서 하나씩 확인합니다.
+                </p>
+                <div className="intro-actions">
+                  <button className="secondary-button" type="button" onClick={() => setIntroStep(1)}>
+                    이전
+                  </button>
+                  <button
+                    className="welcome-start-button"
+                    type="button"
+                    onClick={() => setIntroStep(3)}
+                  >
+                    다음 안내 보기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {introStep === 3 && (
+              <div className="intro-panel">
+                <h1>실험표와 분석을 받아요</h1>
+                <p className="welcome-description">
+                  정해진 조합대로 실험하고 결과를 입력하면 중요한 조건과 다음 실험 방향을 보여줍니다.
+                </p>
+                <div className="intro-actions">
+                  <button className="secondary-button" type="button" onClick={() => setIntroStep(2)}>
+                    이전
+                  </button>
+                  <button
+                    className="welcome-start-button"
+                    type="button"
+                    onClick={() => setIntroStep(4)}
+                  >
+                    목표 입력하기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {introStep === 4 && (
+              <div className="intro-panel">
                 <h1>무엇을 더 좋게 만들고 싶나요?</h1>
                 <div className="quick-start-note" aria-label="처음 시작 안내">
                   <Sparkles size={16} />
-                  <span>한 문장으로 적으면 측정 결과와 목표를 먼저 잡아둡니다.</span>
+                  <span>한 문장으로 적으면 시작할 수 있어요.</span>
                 </div>
                 <form
                   className="intent-composer"
@@ -2075,13 +2105,13 @@ export default function Home() {
                     내 실험 최적화 시작하기
                   </button>
                 </form>
-                <button className="secondary-button quiet-back-button" type="button" onClick={() => setIntroStep(1)}>
+                <button className="secondary-button quiet-back-button" type="button" onClick={() => setIntroStep(3)}>
                   이전
                 </button>
               </div>
             )}
 
-            {projectList.length > 0 && (
+            {introStep === 4 && projectList.length > 0 && (
               <div className="recent-projects">
                 <span>최근 프로젝트 열기</span>
                 {projectList.slice(0, 3).map((item) => (

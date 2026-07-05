@@ -326,6 +326,11 @@ select:focus {
   width: 100%;
 }
 
+.intro-panel-first {
+  min-height: 360px;
+  align-content: center;
+}
+
 .welcome-content h1 {
   margin: 0;
   color: var(--accent-strong);
