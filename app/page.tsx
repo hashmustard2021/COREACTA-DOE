@@ -1497,6 +1497,15 @@ export default function Home() {
     setErrorText("");
   }
 
+  function handleReturnHomeWithConfirm() {
+    const shouldReturn = window.confirm(
+      "첫 화면으로 이동하면 현재 입력 중인 실험 설정과 저장하지 않은 결과값이 사라집니다. 계속할까요?",
+    );
+    if (!shouldReturn) return;
+    resetProjectState();
+    void loadProjects();
+  }
+
   async function handleDeleteProjectById(projectId: number, projectTitle: string) {
     const shouldDelete = window.confirm(
       `Delete project "${projectTitle}"? This will also delete factors, design runs, and results.`,
@@ -2154,6 +2163,9 @@ export default function Home() {
         </div>
 
         <div className="wizard-actions">
+          <button className="secondary-button return-home-button" type="button" onClick={handleReturnHomeWithConfirm} disabled={isBusy}>
+            첫 화면으로 이동
+          </button>
           <button className="secondary-button" type="button" onClick={() => goToWizardStep(wizardStep - 1)} disabled={wizardStep === 0 || isBusy}>이전</button>
           {conditionStepIndex !== null && (
             <button className="tour-target" type="button" onClick={() => proceedFromConditionDetail(conditionStepIndex)}>
@@ -2195,14 +2207,9 @@ export default function Home() {
             <button
               className="secondary-button"
               type="button"
-              onClick={() => {
-                setProject(null);
-                setIsIntroComplete(false);
-                setIsSetupStarted(false);
-                void loadProjects();
-              }}
+              onClick={handleReturnHomeWithConfirm}
             >
-              Home
+              첫 화면으로 이동
             </button>
             <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
               <Save size={15} /> 저장

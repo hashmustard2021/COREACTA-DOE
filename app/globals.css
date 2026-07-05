@@ -509,22 +509,21 @@ select:focus {
 
 .onboarding-card {
   position: relative;
-  width: min(300px, calc(100vw - 40px));
+  width: min(360px, calc(100vw - 40px));
   margin-top: 18px;
   border-radius: 8px;
-  background: #2f7edb;
-  box-shadow: 0 16px 34px rgba(47, 126, 219, 0.28);
-  color: #ffffff;
-  padding: 18px 18px 16px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  color: var(--text);
+  padding: 16px 16px 14px;
   text-align: left;
-  animation: onboarding-float 1.7s ease-in-out infinite;
 }
 
 .welcome-screen .onboarding-card {
-  position: absolute;
-  top: 246px;
-  left: calc(50% - 430px);
-  margin-top: 0;
+  justify-self: center;
+  width: min(680px, calc(100vw - 40px));
+  margin-top: 18px;
 }
 
 .wizard-card .onboarding-card,
@@ -533,19 +532,7 @@ select:focus {
 }
 
 .onboarding-card::after {
-  position: absolute;
-  top: 36px;
-  right: -10px;
-  width: 20px;
-  height: 20px;
-  background: #2f7edb;
-  content: "";
-  transform: rotate(45deg);
-}
-
-.welcome-screen .onboarding-card::after {
-  top: 96px;
-  right: -10px;
+  display: none;
 }
 
 .onboarding-close {
@@ -557,7 +544,7 @@ select:focus {
   height: 24px;
   border: 0;
   background: transparent;
-  color: #ffffff;
+  color: var(--muted);
   padding: 0;
 }
 
@@ -569,8 +556,8 @@ select:focus {
 }
 
 .onboarding-card p {
-  margin: 8px 0 18px;
-  color: rgba(255, 255, 255, 0.92);
+  margin: 7px 0 14px;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
@@ -584,16 +571,16 @@ select:focus {
 }
 
 .onboarding-footer span {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--accent-strong);
   font-size: 12px;
   font-weight: 800;
 }
 
 .onboarding-footer button {
   min-height: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   padding: 0 13px;
 }
 
@@ -887,9 +874,14 @@ select:focus {
 
 .wizard-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
+}
+
+.return-home-button {
+  margin-right: auto;
 }
 
 .workspace-header-card {
@@ -2066,7 +2058,6 @@ tbody tr:last-child td {
   }
 
   .welcome-screen .onboarding-card {
-    position: static;
     margin-top: 22px;
   }
 }
