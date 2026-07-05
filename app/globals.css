@@ -392,6 +392,14 @@ select:focus {
   margin-top: 30px;
 }
 
+.compact-intent-composer {
+  margin-top: 24px;
+}
+
+.final-start-composer {
+  margin-top: 20px;
+}
+
 .intent-composer label {
   display: grid;
   width: 100%;

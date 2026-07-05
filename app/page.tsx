@@ -2011,6 +2011,33 @@ export default function Home() {
                 <p className="welcome-description">
                   “수율을 높이고 싶어요”처럼 원하는 결과를 한 문장으로 적습니다.
                 </p>
+                <form
+                  className="intent-composer compact-intent-composer"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    setIntroStep(2);
+                  }}
+                >
+                  <label>
+                    <span>실험 목표</span>
+                    <input
+                      value={experimentIntent}
+                      onChange={(event) => setExperimentIntent(event.target.value)}
+                      placeholder="예: 수율을 높이고 싶어요"
+                    />
+                  </label>
+                  <div className="intent-suggestions" aria-label="목표 예시">
+                    {objectiveSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.label}
+                        type="button"
+                        onClick={() => setExperimentIntent(suggestion.prompt)}
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                </form>
                 <div className="intro-actions">
                   <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>
                     이전
@@ -2062,7 +2089,7 @@ export default function Home() {
                     type="button"
                     onClick={() => setIntroStep(4)}
                   >
-                    목표 입력하기
+                    시작 준비하기
                   </button>
                 </div>
               </div>
@@ -2070,37 +2097,18 @@ export default function Home() {
 
             {introStep === 4 && (
               <div className="intro-panel">
-                <h1>무엇을 더 좋게 만들고 싶나요?</h1>
+                <h1>이제 조건을 정해볼까요?</h1>
                 <div className="quick-start-note" aria-label="처음 시작 안내">
                   <Sparkles size={16} />
-                  <span>한 문장으로 적으면 시작할 수 있어요.</span>
+                  <span>{experimentIntent.trim() || "목표는 비워두고 시작할 수도 있어요."}</span>
                 </div>
                 <form
-                  className="intent-composer"
+                  className="intent-composer final-start-composer"
                   onSubmit={(event) => {
                     event.preventDefault();
                     startNewExperiment();
                   }}
                 >
-                  <label>
-                    <span>실험 목표</span>
-                    <input
-                      value={experimentIntent}
-                      onChange={(event) => setExperimentIntent(event.target.value)}
-                      placeholder="예: 수율을 높이고 싶어요"
-                    />
-                  </label>
-                  <div className="intent-suggestions" aria-label="목표 예시">
-                    {objectiveSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.label}
-                        type="button"
-                        onClick={() => setExperimentIntent(suggestion.prompt)}
-                      >
-                        {suggestion.label}
-                      </button>
-                    ))}
-                  </div>
                   <button className="welcome-start-button tour-target" type="submit">
                     내 실험 최적화 시작하기
                   </button>
