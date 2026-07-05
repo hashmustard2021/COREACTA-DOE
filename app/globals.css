@@ -138,6 +138,26 @@ select:focus {
   padding: 24px;
 }
 
+.brand-home-button {
+  min-height: auto;
+  justify-content: flex-start;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.brand-home-button:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.brand-home-button:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.3);
+  outline-offset: 5px;
+}
+
 .hero-copy span,
 .card-heading span {
   color: var(--accent);
@@ -268,6 +288,44 @@ select:focus {
   text-align: center;
 }
 
+.intro-progress {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(520px, 100%);
+  margin-bottom: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 5px;
+}
+
+.intro-progress button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.intro-progress button.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.intro-progress button.complete {
+  color: var(--accent-strong);
+}
+
+.intro-panel {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+
 .welcome-content h1 {
   margin: 0;
   color: var(--accent-strong);
@@ -289,6 +347,36 @@ select:focus {
   color: var(--muted);
   font-size: 17px;
   line-height: 1.7;
+}
+
+.welcome-description.compact {
+  margin-top: 22px;
+  font-size: 15px;
+}
+
+.service-flow-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(620px, 100%);
+  margin-top: 30px;
+}
+
+.service-flow-strip span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 10px 12px;
+}
+
+.intro-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 30px;
 }
 
 .intent-composer {
@@ -394,6 +482,10 @@ select:focus {
   margin-top: 4px;
   padding: 0 26px;
   font-size: 16px;
+}
+
+.quiet-back-button {
+  margin-top: 18px;
 }
 
 .welcome-content small {
@@ -2074,6 +2166,7 @@ tbody tr:last-child td {
   .guide-steps,
   .setup-choice-grid,
   .starter-steps,
+  .service-flow-strip,
   .welcome-explainer,
   .wizard-summary-grid,
   .stats-grid,
@@ -2196,6 +2289,22 @@ tbody tr:last-child td {
 
   .welcome-content {
     padding: 76px 0 40px;
+  }
+
+  .intro-progress {
+    grid-template-columns: 1fr;
+    border-radius: 12px;
+    margin-bottom: 34px;
+  }
+
+  .intro-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .intro-actions button {
+    width: 100%;
   }
 
   .welcome-content h1 {

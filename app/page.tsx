@@ -885,6 +885,7 @@ export default function Home() {
   const [projectGoal, setProjectGoal] = useState<"maximize" | "minimize">("maximize");
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const [introStep, setIntroStep] = useState(0);
   const [isSetupStarted, setIsSetupStarted] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
@@ -1061,7 +1062,8 @@ export default function Home() {
           },
         ];
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
-  const showTour = currentUser && !isTourDismissed && activeTourStep;
+  const showTour = currentUser && isIntroComplete && !isTourDismissed && activeTourStep;
+  const introSteps = ["서비스 소개", "진행 방식", "목표 입력"];
   const wizardPhaseIndex = wizardStep <= 3 ? 0 : wizardStep <= 7 ? 1 : wizardStep <= 10 ? 2 : 3;
   const conditionStepIndex = wizardStep >= 0 && wizardStep <= 3 ? wizardStep : null;
   const valueStepIndex = wizardStep >= 4 && wizardStep <= 7 ? wizardStep - 4 : null;
@@ -1479,6 +1481,7 @@ export default function Home() {
     setFactors(defaultFactors);
     setFactorErrors({});
     setIsIntroComplete(false);
+    setIntroStep(0);
     setIsSetupStarted(false);
     setWizardStep(0);
     setDesignRuns([]);
@@ -1515,6 +1518,21 @@ export default function Home() {
       "첫 화면으로 이동하면 현재 입력 중인 실험 설정과 저장하지 않은 결과값이 사라집니다. 계속할까요?",
     );
     if (!shouldReturn) return;
+    resetProjectState();
+    void loadProjects();
+  }
+
+  function handleBrandHomeClick() {
+    if (!currentUser) {
+      resetProjectState();
+      return;
+    }
+
+    if (isIntroComplete || project || isSetupStarted) {
+      handleReturnHomeWithConfirm();
+      return;
+    }
+
     resetProjectState();
     void loadProjects();
   }
@@ -1809,11 +1827,18 @@ export default function Home() {
     <main className="app-shell">
       {(!currentUser || isIntroComplete) && (
       <section className={isSetupStarted ? "hero-card workflow-header" : "hero-card"}>
-        <div className="hero-copy">
-          <span>실험 최적화</span>
-          <h1>Coreacta DOE</h1>
-          <p>감이 아니라 근거로 실험하세요.</p>
-        </div>
+        <button
+          className="brand-home-button"
+          type="button"
+          onClick={handleBrandHomeClick}
+          aria-label="Coreacta DOE 첫 화면으로 이동"
+        >
+          <div className="hero-copy">
+            <span>실험 최적화</span>
+            <h1>Coreacta DOE</h1>
+            <p>감이 아니라 근거로 실험하세요.</p>
+          </div>
+        </button>
         <div className="hero-meta">
           {currentUser ? (
             <>
@@ -1907,52 +1932,114 @@ export default function Home() {
           </div>
 
           <div className="welcome-content">
-            <h1>Coreacta DOE</h1>
-            <p className="welcome-slogan">무엇을 더 좋게 만들고 싶나요?</p>
-            <div className="quick-start-note" aria-label="처음 시작 안내">
-              <Sparkles size={16} />
-              <span>목적을 한 문장으로 말하면 조건 설정을 하나씩 안내합니다.</span>
+            <div className="intro-progress" aria-label="첫 화면 안내 단계">
+              {introSteps.map((step, index) => (
+                <button
+                  key={step}
+                  className={index === introStep ? "active" : index < introStep ? "complete" : ""}
+                  type="button"
+                  onClick={() => setIntroStep(index)}
+                >
+                  {step}
+                </button>
+              ))}
             </div>
-            <p className="welcome-description">
-              예를 들어 수율을 높이고 싶다거나 점도를 낮추고 싶다고 적어보세요.
-              Coreacta DOE가 측정 결과와 목표를 먼저 잡고, 그다음 조건을 하나씩 묻습니다.
-            </p>
-            <form
-              className="intent-composer"
-              onSubmit={(event) => {
-                event.preventDefault();
-                startNewExperiment();
-              }}
-            >
-              <label>
-                <span>실험 목표</span>
-                <input
-                  value={experimentIntent}
-                  onChange={(event) => setExperimentIntent(event.target.value)}
-                  placeholder="예: 수율을 높이고 싶어요"
-                />
-              </label>
-              <div className="intent-suggestions" aria-label="목표 예시">
-                {objectiveSuggestions.map((suggestion) => (
+
+            {introStep === 0 && (
+              <div className="intro-panel">
+                <h1>Coreacta DOE</h1>
+                <p className="welcome-slogan">실험 조건을 정리해 실험표와 분석을 만들어주는 도우미입니다.</p>
+                <p className="welcome-description">
+                  무엇을 좋게 만들고 싶은지만 알려주세요. Coreacta DOE가 조건을 하나씩 묻고,
+                  먼저 해볼 실험 조합을 만든 뒤 결과를 분석합니다.
+                </p>
+                <div className="service-flow-strip" aria-label="서비스 흐름">
+                  <span>목표 입력</span>
+                  <span>실험표 생성</span>
+                  <span>결과 분석</span>
+                </div>
+                <div className="intro-actions">
                   <button
-                    key={suggestion.label}
+                    className="welcome-start-button"
                     type="button"
-                    onClick={() => setExperimentIntent(suggestion.prompt)}
+                    onClick={() => setIntroStep(1)}
                   >
-                    {suggestion.label}
+                    진행 방식 보기
                   </button>
-                ))}
+                </div>
               </div>
-              <button className="welcome-start-button tour-target" type="submit">
-                내 실험 최적화 시작하기
-              </button>
-            </form>
-            <small>나중에 조건명, 범위, 측정 결과는 모두 수정할 수 있습니다.</small>
-            <div className="starter-steps" aria-label="시작 순서">
-              <span><b>1</b> 목표 말하기</span>
-              <span><b>2</b> 조건 하나씩 정하기</span>
-              <span><b>3</b> 실험표 받고 분석하기</span>
-            </div>
+            )}
+
+            {introStep === 1 && (
+              <div className="intro-panel">
+                <h1>하나씩만 정하면 됩니다</h1>
+                <p className="welcome-slogan">처음에는 복잡한 DOE 용어를 몰라도 괜찮아요.</p>
+                <div className="starter-steps" aria-label="시작 순서">
+                  <span><b>1</b> 무엇을 개선할지 말하기</span>
+                  <span><b>2</b> 조건과 값을 하나씩 정하기</span>
+                  <span><b>3</b> 실험표를 받고 결과 분석하기</span>
+                </div>
+                <p className="welcome-description compact">
+                  조건명, 범위, 측정 결과는 나중에도 수정할 수 있어요.
+                </p>
+                <div className="intro-actions">
+                  <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>
+                    이전
+                  </button>
+                  <button
+                    className="welcome-start-button"
+                    type="button"
+                    onClick={() => setIntroStep(2)}
+                  >
+                    실험 목표 입력하기
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {introStep === 2 && (
+              <div className="intro-panel">
+                <h1>무엇을 더 좋게 만들고 싶나요?</h1>
+                <div className="quick-start-note" aria-label="처음 시작 안내">
+                  <Sparkles size={16} />
+                  <span>한 문장으로 적으면 측정 결과와 목표를 먼저 잡아둡니다.</span>
+                </div>
+                <form
+                  className="intent-composer"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    startNewExperiment();
+                  }}
+                >
+                  <label>
+                    <span>실험 목표</span>
+                    <input
+                      value={experimentIntent}
+                      onChange={(event) => setExperimentIntent(event.target.value)}
+                      placeholder="예: 수율을 높이고 싶어요"
+                    />
+                  </label>
+                  <div className="intent-suggestions" aria-label="목표 예시">
+                    {objectiveSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.label}
+                        type="button"
+                        onClick={() => setExperimentIntent(suggestion.prompt)}
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="welcome-start-button tour-target" type="submit">
+                    내 실험 최적화 시작하기
+                  </button>
+                </form>
+                <button className="secondary-button quiet-back-button" type="button" onClick={() => setIntroStep(1)}>
+                  이전
+                </button>
+              </div>
+            )}
+
             {projectList.length > 0 && (
               <div className="recent-projects">
                 <span>최근 프로젝트 열기</span>
@@ -1973,22 +2060,6 @@ export default function Home() {
               </div>
             )}
           </div>
-          {showTour && (
-            <OnboardingCard
-              step={Math.min(tourStep, tourSteps.length - 1) + 1}
-              total={tourSteps.length}
-              title={activeTourStep.title}
-              body={activeTourStep.body}
-              onNext={() => {
-                if (tourStep >= tourSteps.length - 1) {
-                  setIsTourDismissed(true);
-                  return;
-                }
-                setTourStep((current) => current + 1);
-              }}
-              onClose={() => setIsTourDismissed(true)}
-            />
-          )}
         </section>
       )}
 
