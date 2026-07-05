@@ -302,6 +302,22 @@ const defaultFactors: FactorInput[] = [
   },
 ];
 
+function hasFactorChangedFromDefault(factor: FactorInput, index: number) {
+  const defaultFactor = defaultFactors[index];
+  if (!defaultFactor) return true;
+
+  return (
+    factor.idx !== defaultFactor.idx ||
+    factor.factor_type !== defaultFactor.factor_type ||
+    factor.name_kr !== defaultFactor.name_kr ||
+    factor.name_en !== defaultFactor.name_en ||
+    factor.unit !== defaultFactor.unit ||
+    factor.low !== defaultFactor.low ||
+    factor.high !== defaultFactor.high ||
+    factor.levels !== defaultFactor.levels
+  );
+}
+
 const factorPresetOptions: Array<{
   id: FactorPresetId;
   label: string;
@@ -1513,11 +1529,36 @@ export default function Home() {
     setErrorText("");
   }
 
-  function handleReturnHomeWithConfirm() {
-    const shouldReturn = window.confirm(
-      "첫 화면으로 이동하면 현재 입력 중인 실험 설정과 저장하지 않은 결과값이 사라집니다. 계속할까요?",
+  function hasDataToConfirmBeforeHome() {
+    const hasEditedFactors =
+      factors.length !== defaultFactors.length ||
+      factors.some((factor, index) => hasFactorChangedFromDefault(factor, index));
+    const hasTypedResults = Object.values(yields).some((value) => value.trim().length > 0);
+
+    return (
+      Boolean(project) ||
+      designRuns.length > 0 ||
+      resultHistory.length > 0 ||
+      Boolean(report) ||
+      hasTypedResults ||
+      experimentIntent.trim().length > 0 ||
+      projectName !== "New experiment" ||
+      projectSlogan !== "감이 아니라 근거로 실험하세요." ||
+      responseName !== "Result" ||
+      projectGoal !== "maximize" ||
+      (includeCenterPoints && hasContinuousFactor) ||
+      hasEditedFactors
     );
-    if (!shouldReturn) return;
+  }
+
+  function handleReturnHomeWithConfirm() {
+    if (hasDataToConfirmBeforeHome()) {
+      const shouldReturn = window.confirm(
+        "첫 화면으로 이동하면 현재 입력 중인 실험 설정과 저장하지 않은 결과값이 사라집니다. 계속할까요?",
+      );
+      if (!shouldReturn) return;
+    }
+
     resetProjectState();
     void loadProjects();
   }
