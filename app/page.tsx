@@ -2020,23 +2020,25 @@ export default function Home() {
                 >
                   <label>
                     <span>실험 목표</span>
-                    <input
-                      value={experimentIntent}
-                      onChange={(event) => setExperimentIntent(event.target.value)}
-                      placeholder="예: 수율을 높이고 싶어요"
-                    />
+                    <div className="intent-input-shell">
+                      <input
+                        value={experimentIntent}
+                        onChange={(event) => setExperimentIntent(event.target.value)}
+                        placeholder="예: 수율을 높이고 싶어요"
+                      />
+                      <div className="intent-suggestions" aria-label="목표 예시">
+                        {objectiveSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion.label}
+                            type="button"
+                            onClick={() => setExperimentIntent(suggestion.prompt)}
+                          >
+                            {suggestion.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </label>
-                  <div className="intent-suggestions" aria-label="목표 예시">
-                    {objectiveSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.label}
-                        type="button"
-                        onClick={() => setExperimentIntent(suggestion.prompt)}
-                      >
-                        {suggestion.label}
-                      </button>
-                    ))}
-                  </div>
                 </form>
                 <div className="intro-actions">
                   <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>

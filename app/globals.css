@@ -413,13 +413,34 @@ select:focus {
   font-weight: 900;
 }
 
-.intent-composer input {
-  min-height: 62px;
+.intent-input-shell {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: #ffffff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  padding: 12px;
+}
+
+.intent-input-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18), 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.intent-composer input {
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
   font-size: 18px;
-  padding: 0 18px;
+  padding: 0 4px;
+}
+
+.intent-composer input:focus {
+  box-shadow: none;
+  outline: none;
 }
 
 .intent-composer input::placeholder {
@@ -429,7 +450,7 @@ select:focus {
 .intent-suggestions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
 }
