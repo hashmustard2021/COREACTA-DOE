@@ -14,7 +14,6 @@ import {
   Copy,
   Download,
   FileText,
-  FlaskConical,
   Play,
   RefreshCw,
   Save,
@@ -965,6 +964,19 @@ export default function Home() {
         directionLabel: item.direction_label || item.direction,
       }));
   }, [report]);
+  const reportConclusion = useMemo(() => {
+    if (!report) return null;
+    const topDriver = report.top_drivers[0];
+    const firstRecommendation = report.recommendations[0];
+    return {
+      summary: topDriver
+        ? `현재 데이터에서는 ${topDriver.display_name} 조건이 결과에 가장 큰 영향을 주고 있어요.`
+        : "현재 데이터로 중요한 조건을 확인하고 있어요.",
+      nextStep: firstRecommendation
+        ? `다음 실험에서는 ${firstRecommendation.strategy} 조건을 먼저 확인해 보세요.`
+        : "결과를 더 입력하면 다음 실험 조건을 추천할 수 있어요.",
+    };
+  }, [report]);
   const surfaceScale = useMemo(() => {
     if (!surfaceData) return { min: 0, max: 0 };
     const values = surfaceData.z_matrix.flat();
@@ -1050,6 +1062,7 @@ export default function Home() {
         ];
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
   const showTour = currentUser && !isTourDismissed && activeTourStep;
+  const wizardPhaseIndex = wizardStep <= 3 ? 0 : wizardStep <= 7 ? 1 : wizardStep <= 10 ? 2 : 3;
   const conditionStepIndex = wizardStep >= 0 && wizardStep <= 3 ? wizardStep : null;
   const valueStepIndex = wizardStep >= 4 && wizardStep <= 7 ? wizardStep - 4 : null;
   const activeConditionIndex = conditionStepIndex ?? valueStepIndex ?? 0;
@@ -1120,10 +1133,10 @@ export default function Home() {
       });
       setCurrentUser(user);
       setLoginPassword("");
-      setStatusText(`Logged in as ${user.username}.`);
+      setStatusText(`${user.username}님으로 로그인했어요.`);
       await loadProjects();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Login failed.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 로그인할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1154,9 +1167,9 @@ export default function Home() {
       setExpandedHistoryRuns({});
       setProjectList([]);
       setSurfaceData(null);
-      setStatusText("Logged out.");
+      setStatusText("로그아웃했어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Logout failed.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 로그아웃할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1397,10 +1410,10 @@ export default function Home() {
       setSurfaceYFactor(
         factorDisplayName(availableSurfaceFactors[1] ?? availableSurfaceFactors[0] ?? factors[1]),
       );
-      setStatusText(`Project ${createdProject.id} design generated.`);
+      setStatusText("실험표를 만들었어요.");
       void loadProjects();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to generate design.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 실험표를 만들 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1426,10 +1439,10 @@ export default function Home() {
       });
 
       setProject(updatedProject);
-      setStatusText(`Project ${updatedProject.id} updated.`);
+      setStatusText("프로젝트를 저장했어요.");
       void loadProjects();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to update project.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 프로젝트를 저장할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1448,9 +1461,9 @@ export default function Home() {
       );
       await loadProjects();
       await handleLoadProject(duplicated.project_id);
-      setStatusText(`Project ${duplicated.project_id} duplicated.`);
+      setStatusText("프로젝트를 복제했어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to duplicate project.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 프로젝트를 복제할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1508,7 +1521,7 @@ export default function Home() {
 
   async function handleDeleteProjectById(projectId: number, projectTitle: string) {
     const shouldDelete = window.confirm(
-      `Delete project "${projectTitle}"? This will also delete factors, design runs, and results.`,
+      `"${projectTitle}" 프로젝트를 삭제할까요?\n조건, 실험표, 결과가 함께 삭제됩니다. 취소를 누르면 그대로 둘 수 있어요.`,
     );
     if (!shouldDelete) return;
 
@@ -1524,10 +1537,10 @@ export default function Home() {
       if (project?.id === projectId) {
         resetProjectState();
       }
-      setStatusText("Project deleted.");
+      setStatusText("프로젝트를 삭제했어요.");
       await loadProjects();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to delete project.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 프로젝트를 삭제할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1572,10 +1585,10 @@ export default function Home() {
       setResultHistory(await loadResultHistory(project.id));
       setSurfaceData(null);
       setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
-      setStatusText(`${filledRuns.length} result(s) submitted.`);
+      setStatusText(`실험 결과 ${filledRuns.length}개를 저장했어요.`);
       void loadProjects();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to submit results.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 실험 결과를 저장할 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1589,9 +1602,9 @@ export default function Home() {
 
     try {
       setReport(await apiRequest<Report>(`/api/projects/${project.id}/report/`));
-      setStatusText("Report refreshed.");
+      setStatusText("분석 결과를 불러왔어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to refresh report.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 분석 결과를 볼 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1632,9 +1645,9 @@ export default function Home() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setStatusText("CSV downloaded.");
+      setStatusText("CSV 파일을 내려받았어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "CSV download failed.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 CSV 파일을 받을 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1669,9 +1682,9 @@ export default function Home() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setStatusText("PDF report downloaded.");
+      setStatusText("PDF 리포트를 내려받았어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "PDF download failed.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 PDF 리포트를 받을 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1740,9 +1753,9 @@ export default function Home() {
           ? "예측 그래프 갱신를 눌러 contour plot을 생성하세요."
           : "결과를 입력한 뒤 예측 그래프 갱신를 눌러 contour plot을 생성하세요.",
       );
-      setStatusText(`Project ${projectId} loaded.`);
+      setStatusText("프로젝트를 열었어요.");
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Failed to load project.");
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 프로젝트를 열 수 있어요.");
     } finally {
       setIsBusy(false);
     }
@@ -1931,7 +1944,7 @@ export default function Home() {
                 ))}
               </div>
               <button className="welcome-start-button tour-target" type="submit">
-                실험 설정 시작
+                내 실험 최적화 시작하기
               </button>
             </form>
             <small>나중에 조건명, 범위, 측정 결과는 모두 수정할 수 있습니다.</small>
@@ -1981,6 +1994,13 @@ export default function Home() {
 
       {isIntroComplete && !project && (
       <form className="card setup-card wizard-card guided-wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
+        <div className="wizard-flow-progress" aria-label="실험 설정 진행 흐름">
+          {["조건 선택", "값 입력", "결과 설정", "실험표 생성"].map((step, index) => (
+            <span className={index === wizardPhaseIndex ? "active" : index < wizardPhaseIndex ? "complete" : ""} key={step}>
+              {step}
+            </span>
+          ))}
+        </div>
         <div className="wizard-progress compact-progress" aria-label="실험 생성 단계">
           {guidedWizardSteps.map((step, index) => (
             <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step} title={step}>
@@ -2180,7 +2200,7 @@ export default function Home() {
           {wizardStep === 8 && <button className="tour-target" type="button" onClick={proceedFromResultSettings}>목표 정하기</button>}
           {wizardStep === 9 && <button className="tour-target" type="button" onClick={proceedFromGoalSettings}>프로젝트명 정하기</button>}
           {wizardStep === 10 && <button className="tour-target" type="button" onClick={proceedFromProjectName}>요약 확인하기</button>}
-          {wizardStep === 11 && <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "생성 중..." : "실험표 생성"}</button>}
+          {wizardStep === 11 && <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "실험표를 만드는 중..." : "실험표 생성하기"}</button>}
         </div>
       </form>
       )}
@@ -2212,14 +2232,19 @@ export default function Home() {
               첫 화면으로 이동
             </button>
             <button className="secondary-button" type="button" onClick={() => void handleUpdateProject()} disabled={isBusy}>
-              <Save size={15} /> 저장
+              <Save size={15} /> 프로젝트 저장하기
             </button>
-            <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
-              <Copy size={15} /> 복제
-            </button>
-            <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
-              <Trash2 size={15} /> 삭제
-            </button>
+            <details className="project-more-menu">
+              <summary>프로젝트 관리</summary>
+              <div>
+                <button className="secondary-button" type="button" onClick={() => void handleDuplicateProject()} disabled={isBusy}>
+                  <Copy size={15} /> 복제하기
+                </button>
+                <button className="danger-button" type="button" onClick={() => void handleDeleteProject()} disabled={isBusy}>
+                  <Trash2 size={15} /> 삭제하기
+                </button>
+              </div>
+            </details>
           </div>
         </div>
         <div className="workspace-progress" aria-label="Workspace 진행 상태">
@@ -2271,7 +2296,7 @@ export default function Home() {
             disabled={!project || isBusy}
           >
             <Download size={16} />
-            CSV 다운로드
+            CSV 내려받기
           </button>
         </div>
 
@@ -2322,13 +2347,13 @@ export default function Home() {
           </div>
           <div className="button-group">
             <button
-              className="tour-target"
+              className={completedResultCount > 0 ? "secondary-button" : "tour-target"}
               type="button"
               onClick={handleSubmitResults}
               disabled={!project || designRuns.length === 0 || isBusy}
             >
               <Send size={16} />
-              결과 저장
+              실험 결과 저장하기
             </button>
           </div>
         </div>
@@ -2393,7 +2418,7 @@ export default function Home() {
                     type="button"
                     onClick={() => toggleRunHistory(run.run_order)}
                   >
-                    Run {run.run_order} History {runHistory.length}
+                    Run {run.run_order} 수정 이력 {runHistory.length}
                   </button>
                   {isExpanded && (
                     <div className="history-list">
@@ -2426,13 +2451,13 @@ export default function Home() {
           </div>
           <div className="report-actions">
             <button
-              className="tour-target"
+              className={completedResultCount > 0 && !report ? "tour-target" : "secondary-button"}
               type="button"
               onClick={handleRefreshReport}
               disabled={!project || isBusy}
             >
               <RefreshCw size={16} />
-              분석 보기
+              분석 결과 보기
             </button>
             <button
               className="secondary-button"
@@ -2441,15 +2466,22 @@ export default function Home() {
               disabled={!project || isBusy}
             >
               <FileText size={16} />
-              PDF 리포트 다운로드
+              PDF 리포트 내려받기
             </button>
-            <FlaskConical className="report-icon" size={24} />
           </div>
         </div>
 
         {!report ? (
           <p className="empty-state">결과를 입력하면 분석 결과가 표시됩니다.</p>
         ) : (
+          <>
+          {reportConclusion && (
+            <section className="report-summary">
+              <span>결론 요약</span>
+              <h3>{reportConclusion.summary}</h3>
+              <p>{reportConclusion.nextStep}</p>
+            </section>
+          )}
           <div className="report-layout">
             <div>
               <h3>중요한 조건</h3>
@@ -2459,9 +2491,9 @@ export default function Home() {
                     <span>#{index + 1}</span>
                     <strong>{effect.display_name}</strong>
                     <div>
-                      <b>Impact {formatImpact(effect)}</b>
+                      <b>영향도 {formatImpact(effect)}</b>
                       <em>{effect.direction_label || `${effect.direction} 유리`}</em>
-                      <small>Signed effect: {formatEffect(effect.effect)}</small>
+                      <small>방향 포함 효과: {formatEffect(effect.effect)}</small>
                     </div>
                   </article>
                 ))}
@@ -2472,12 +2504,12 @@ export default function Home() {
               <h3>해석 메모</h3>
               <div className="notes-box">
                 {report.message ||
-                  "Impact는 effect의 절댓값입니다. Signed effect는 HIGH 평균 수율 - LOW 평균 수율이며, 음수이면 LOW 조건이 유리하다는 뜻입니다."}
+                  "영향도는 조건을 바꿨을 때 결과가 얼마나 달라졌는지 보여줍니다. 방향 포함 효과가 음수이면 낮은 조건이 더 유리하다고 해석합니다."}
               </div>
             </div>
 
             <div className="advisor-card">
-              <h3>AI / Rule-based interpretation</h3>
+              <h3>해석 요약</h3>
               {report.interpretation.length === 0 ? (
                 <p className="empty-state">해석을 생성할 데이터가 충분하지 않습니다.</p>
               ) : (
@@ -2543,7 +2575,7 @@ export default function Home() {
             <div className="recommendations">
               <h3>다음 실험 추천</h3>
               {report.recommendations.length === 0 ? (
-                <p className="empty-state">No recommendation yet.</p>
+                <p className="empty-state">결과를 더 입력하면 다음 실험 조건을 추천할 수 있어요.</p>
               ) : (
                 report.recommendations.map((recommendation) => (
                   <article className="recommendation" key={recommendation.rank}>
@@ -2554,7 +2586,7 @@ export default function Home() {
                     {recommendation.predicted_yield !== undefined &&
                       recommendation.predicted_yield !== null && (
                         <p className="prediction">
-                          Predicted yield: {Number(recommendation.predicted_yield).toFixed(1)}%
+                          예상 결과: {Number(recommendation.predicted_yield).toFixed(1)}%
                         </p>
                       )}
                     <div className="condition-grid">
@@ -2571,6 +2603,7 @@ export default function Home() {
               )}
             </div>
           </div>
+          </>
         )}
         <div className="graph-section report-visuals">
         <article className="chart-card">
@@ -2745,6 +2778,7 @@ export default function Home() {
               </h2>
             </div>
             <button
+              className="secondary-button"
               type="button"
               onClick={handleLoadSurface}
               disabled={
@@ -2822,7 +2856,7 @@ export default function Home() {
                 <span>{surfaceScale.max.toFixed(2)}</span>
               </div>
               <p className="surface-note">
-                Predicted yield by {surfaceData.model}
+                {surfaceData.model} 모델로 예측한 결과입니다.
               </p>
             </div>
           )}
