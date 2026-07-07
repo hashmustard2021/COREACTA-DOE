@@ -318,6 +318,13 @@ function hasFactorChangedFromDefault(factor: FactorInput, index: number) {
   );
 }
 
+const initialFactorPresetSelections: Record<number, FactorPresetId> = {
+  1: "temperature",
+  2: "time",
+  3: "concentration",
+  4: "speed",
+};
+
 const factorPresetOptions: Array<{
   id: FactorPresetId;
   label: string;
@@ -456,6 +463,14 @@ function presetOptionsForFactorType(factorType: FactorInput["factor_type"]) {
   return factorPresetOptions.filter(
     (option) => option.id === "custom" || option.factor?.factor_type === factorType,
   );
+}
+
+function defaultPresetIdForFactorType(idx: number, factorType: FactorInput["factor_type"]): FactorPresetId {
+  if (factorType === "categorical") {
+    return idx % 2 === 1 ? "solvent" : "material";
+  }
+
+  return initialFactorPresetSelections[idx] ?? "custom";
 }
 
 function factorFromPreset(idx: number, presetId: FactorPresetId): FactorInput {
@@ -1001,6 +1016,8 @@ export default function Home() {
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
+  const [factorPresetSelections, setFactorPresetSelections] =
+    useState<Record<number, FactorPresetId>>(initialFactorPresetSelections);
   const [isBusy, setIsBusy] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [isTourDismissed, setIsTourDismissed] = useState(false);
@@ -1175,6 +1192,11 @@ export default function Home() {
   const activeFactorErrors = activeFactor ? factorErrors[activeFactor.idx] ?? {} : {};
   const activeFactorKey = factorKeys[activeConditionIndex] ?? String(activeConditionIndex + 1);
   const activeFactorPresetOptions = presetOptionsForFactorType(activeFactor.factor_type);
+  const activeFactorPresetSelection = activeFactorPresetOptions.some(
+    (option) => option.id === factorPresetSelections[activeFactor.idx],
+  )
+    ? factorPresetSelections[activeFactor.idx]
+    : "custom";
 
   const loadProjects = useCallback(async () => {
     try {
@@ -1262,6 +1284,7 @@ export default function Home() {
       setResponseName("Result");
       setProjectGoal("maximize");
       setFactors(defaultFactors);
+      setFactorPresetSelections(initialFactorPresetSelections);
       setFactorErrors({});
       setIsIntroComplete(false);
       setIsSetupStarted(false);
@@ -1333,13 +1356,26 @@ export default function Home() {
   }
 
   function handleFactorTypeChange(index: number, factorType: FactorInput["factor_type"]) {
+    const factorIdx = factors[index]?.idx;
     updateFactor(index, "factor_type", factorType);
+    if (factorIdx) {
+      setFactorPresetSelections((current) => ({
+        ...current,
+        [factorIdx]: defaultPresetIdForFactorType(factorIdx, factorType),
+      }));
+    }
     setFactorTypeHelp(factorType);
   }
 
   function applyFactorPreset(index: number, presetId: FactorPresetId) {
-    if (presetId === "custom") return;
     const factorIdx = factors[index]?.idx;
+    if (factorIdx) {
+      setFactorPresetSelections((current) => ({
+        ...current,
+        [factorIdx]: presetId,
+      }));
+    }
+    if (presetId === "custom") return;
     if (factorIdx) {
       setFactorErrors((current) => ({
         ...current,
@@ -1355,6 +1391,7 @@ export default function Home() {
 
   function applyDefaultContinuousFactors() {
     setFactors(defaultFactors);
+    setFactorPresetSelections(initialFactorPresetSelections);
     setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
@@ -1367,6 +1404,12 @@ export default function Home() {
       factorFromPreset(3, "solvent"),
       factorFromPreset(4, "material"),
     ]);
+    setFactorPresetSelections({
+      1: "temperature",
+      2: "time",
+      3: "solvent",
+      4: "material",
+    });
     setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
@@ -1602,6 +1645,7 @@ export default function Home() {
     setResponseName("Result");
     setProjectGoal("maximize");
     setFactors(defaultFactors);
+    setFactorPresetSelections(initialFactorPresetSelections);
     setFactorErrors({});
     setIsIntroComplete(false);
     setIntroStep(0);
@@ -1895,6 +1939,12 @@ export default function Home() {
           levels: factor.levels.join(", "),
         }));
       setFactors(restoredFactors);
+      setFactorPresetSelections(
+        restoredFactors.reduce<Record<number, FactorPresetId>>((selections, factor) => {
+          selections[factor.idx] = factorPresetId(factor);
+          return selections;
+        }, {}),
+      );
       setFactorErrors({});
       setIsIntroComplete(true);
       setIsSetupStarted(true);
@@ -2318,6 +2368,8 @@ export default function Home() {
                     <span>조건 유형</span>
                     <select
                       value={activeFactor.factor_type}
+                      onClick={() => setFactorTypeHelp(activeFactor.factor_type)}
+                      onFocus={() => setFactorTypeHelp(activeFactor.factor_type)}
                       onChange={(event) =>
                         handleFactorTypeChange(
                           conditionStepIndex,
@@ -2331,7 +2383,7 @@ export default function Home() {
                   </label>
                   <label className="factor-cell">
                     <span>기본 조건</span>
-                    <select value={factorPresetId(activeFactor)} onChange={(event) => applyFactorPreset(conditionStepIndex, event.target.value as FactorPresetId)}>
+                    <select value={activeFactorPresetSelection} onChange={(event) => applyFactorPreset(conditionStepIndex, event.target.value as FactorPresetId)}>
                       {activeFactorPresetOptions.map((option) => (
                         <option key={option.id} value={option.id}>{option.label} · {option.description}</option>
                       ))}
