@@ -439,6 +439,25 @@ const factorPresetOptions: Array<{
   },
 ];
 
+const factorTypeHelpCopy: Record<FactorInput["factor_type"], { title: string; body: string; example: string }> = {
+  continuous: {
+    title: "숫자 범위형",
+    body: "온도, 시간, 농도처럼 숫자로 낮은 값과 높은 값을 정할 수 있는 조건입니다.",
+    example: "예: 온도를 60도와 90도에서 비교해요.",
+  },
+  categorical: {
+    title: "선택형",
+    body: "용매, 재료, 장비 설정처럼 숫자 범위가 아니라 후보 2개를 비교하는 조건입니다.",
+    example: "예: 용매를 THF와 Toluene으로 비교해요.",
+  },
+};
+
+function presetOptionsForFactorType(factorType: FactorInput["factor_type"]) {
+  return factorPresetOptions.filter(
+    (option) => option.id === "custom" || option.factor?.factor_type === factorType,
+  );
+}
+
 function factorFromPreset(idx: number, presetId: FactorPresetId): FactorInput {
   const preset = factorPresetOptions.find((option) => option.id === presetId);
   if (!preset?.factor) {
@@ -918,6 +937,7 @@ export default function Home() {
   const [isBusy, setIsBusy] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [isTourDismissed, setIsTourDismissed] = useState(false);
+  const [factorTypeHelp, setFactorTypeHelp] = useState<FactorInput["factor_type"] | null>(null);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
   const [surfaceMessage, setSurfaceMessage] = useState(
@@ -1087,6 +1107,7 @@ export default function Home() {
   const activeFactor = factors[activeConditionIndex] ?? factors[0];
   const activeFactorErrors = activeFactor ? factorErrors[activeFactor.idx] ?? {} : {};
   const activeFactorKey = factorKeys[activeConditionIndex] ?? String(activeConditionIndex + 1);
+  const activeFactorPresetOptions = presetOptionsForFactorType(activeFactor.factor_type);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -1228,6 +1249,11 @@ export default function Home() {
         return { ...factor, [field]: value };
       }),
     );
+  }
+
+  function handleFactorTypeChange(index: number, factorType: FactorInput["factor_type"]) {
+    updateFactor(index, "factor_type", factorType);
+    setFactorTypeHelp(factorType);
   }
 
   function applyFactorPreset(index: number, presetId: FactorPresetId) {
@@ -2208,18 +2234,26 @@ export default function Home() {
                 </div>
                 <div className="factor-fields single-factor-fields">
                   <label className="factor-cell">
-                    <span>기본 조건</span>
-                    <select value={factorPresetId(activeFactor)} onChange={(event) => applyFactorPreset(conditionStepIndex, event.target.value as FactorPresetId)}>
-                      {factorPresetOptions.map((option) => (
-                        <option key={option.id} value={option.id}>{option.label} · {option.description}</option>
-                      ))}
+                    <span>조건 유형</span>
+                    <select
+                      value={activeFactor.factor_type}
+                      onChange={(event) =>
+                        handleFactorTypeChange(
+                          conditionStepIndex,
+                          event.target.value as FactorInput["factor_type"],
+                        )
+                      }
+                    >
+                      <option value="continuous">숫자 범위형</option>
+                      <option value="categorical">선택형</option>
                     </select>
                   </label>
                   <label className="factor-cell">
-                    <span>조건 유형</span>
-                    <select value={activeFactor.factor_type} onChange={(event) => updateFactor(conditionStepIndex, "factor_type", event.target.value)}>
-                      <option value="continuous">숫자 범위형</option>
-                      <option value="categorical">선택형</option>
+                    <span>기본 조건</span>
+                    <select value={factorPresetId(activeFactor)} onChange={(event) => applyFactorPreset(conditionStepIndex, event.target.value as FactorPresetId)}>
+                      {activeFactorPresetOptions.map((option) => (
+                        <option key={option.id} value={option.id}>{option.label} · {option.description}</option>
+                      ))}
                     </select>
                   </label>
                   <label className="factor-cell">
@@ -3018,6 +3052,34 @@ export default function Home() {
       </>
       )}
         </>
+      )}
+
+      {factorTypeHelp && (
+        <div className="type-help-backdrop" role="presentation" onClick={() => setFactorTypeHelp(null)}>
+          <div
+            className="type-help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="type-help-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="type-help-close"
+              type="button"
+              onClick={() => setFactorTypeHelp(null)}
+              aria-label="조건 유형 설명 닫기"
+            >
+              <X size={16} />
+            </button>
+            <span>조건 유형</span>
+            <h2 id="type-help-title">{factorTypeHelpCopy[factorTypeHelp].title}</h2>
+            <p>{factorTypeHelpCopy[factorTypeHelp].body}</p>
+            <small>{factorTypeHelpCopy[factorTypeHelp].example}</small>
+            <button className="welcome-start-button" type="button" onClick={() => setFactorTypeHelp(null)}>
+              알겠어요
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );

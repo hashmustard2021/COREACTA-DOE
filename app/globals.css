@@ -711,6 +711,81 @@ select:focus {
   padding: 0 13px;
 }
 
+.type-help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.18);
+  padding: 20px;
+}
+
+.type-help-dialog {
+  position: relative;
+  display: grid;
+  width: min(420px, 100%);
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  padding: 24px;
+}
+
+.type-help-dialog > span {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.type-help-dialog h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.type-help-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.type-help-dialog small {
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
+.type-help-dialog .welcome-start-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.type-help-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-height: 30px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+}
+
+.type-help-close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
 .tour-target {
   position: relative;
   box-shadow: none;
