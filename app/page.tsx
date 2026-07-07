@@ -569,6 +569,21 @@ function suggestedEnglishNameFromKorean(nameKr: string) {
   return matched?.english ?? "";
 }
 
+function isKnownSuggestedEnglishName(nameEn: string) {
+  const normalized = nameEn.trim();
+  if (!normalized) return true;
+
+  const knownSuggestions = new Set([
+    ...Object.values(conditionNameTranslations),
+    ...conditionNameKeywordTranslations.map(({ english }) => english),
+    ...factorPresetOptions
+      .map((option) => option.factor?.name_en)
+      .filter((value): value is string => Boolean(value)),
+  ]);
+
+  return knownSuggestions.has(normalized);
+}
+
 function getCookie(name: string) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -1342,7 +1357,9 @@ export default function Home() {
           const nextSuggestion = suggestedEnglishNameFromKorean(value);
           const shouldUpdateEnglishName =
             nextSuggestion &&
-            (!factor.name_en.trim() || factor.name_en === previousSuggestion);
+            (!factor.name_en.trim() ||
+              factor.name_en === previousSuggestion ||
+              isKnownSuggestedEnglishName(factor.name_en));
 
           return {
             ...factor,
