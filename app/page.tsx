@@ -487,6 +487,73 @@ function factorPresetId(factor: FactorInput): FactorPresetId {
   return matched?.id ?? "custom";
 }
 
+const conditionNameTranslations: Record<string, string> = {
+  온도: "Temperature",
+  "반응 온도": "Reaction temperature",
+  시간: "Time",
+  "반응 시간": "Reaction time",
+  농도: "Concentration",
+  속도: "Speed",
+  용매: "Solvent",
+  재료: "Material",
+  "장비 조건": "Equipment setting",
+  압력: "Pressure",
+  습도: "Humidity",
+  촉매: "Catalyst",
+  교반: "Stirring",
+  "교반 속도": "Stirring speed",
+  전압: "Voltage",
+  전류: "Current",
+  전력: "Power",
+  유량: "Flow rate",
+  비율: "Ratio",
+  두께: "Thickness",
+  점도: "Viscosity",
+  휘도: "Luminance",
+  수율: "Yield",
+  저항: "Resistance",
+  산도: "Acidity",
+  염기도: "Basicity",
+  밀도: "Density",
+  "건조 시간": "Drying time",
+  "경화 시간": "Curing time",
+  "열처리 온도": "Annealing temperature",
+};
+
+const conditionNameKeywordTranslations: Array<{ keyword: string; english: string }> = [
+  { keyword: "온도", english: "Temperature" },
+  { keyword: "시간", english: "Time" },
+  { keyword: "농도", english: "Concentration" },
+  { keyword: "속도", english: "Speed" },
+  { keyword: "용매", english: "Solvent" },
+  { keyword: "재료", english: "Material" },
+  { keyword: "압력", english: "Pressure" },
+  { keyword: "습도", english: "Humidity" },
+  { keyword: "촉매", english: "Catalyst" },
+  { keyword: "전압", english: "Voltage" },
+  { keyword: "전류", english: "Current" },
+  { keyword: "유량", english: "Flow rate" },
+  { keyword: "비율", english: "Ratio" },
+  { keyword: "두께", english: "Thickness" },
+  { keyword: "점도", english: "Viscosity" },
+  { keyword: "휘도", english: "Luminance" },
+  { keyword: "수율", english: "Yield" },
+  { keyword: "저항", english: "Resistance" },
+];
+
+function suggestedEnglishNameFromKorean(nameKr: string) {
+  const normalized = nameKr.trim().replace(/\s+/g, " ");
+  if (!normalized) return "";
+
+  const exact = conditionNameTranslations[normalized];
+  if (exact) return exact;
+
+  const matched = conditionNameKeywordTranslations.find(({ keyword }) =>
+    normalized.includes(keyword),
+  );
+  return matched?.english ?? "";
+}
+
 function getCookie(name: string) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -1222,6 +1289,7 @@ export default function Home() {
         [factorIdx]: {
           ...(current[factorIdx] ?? {}),
           [field]: undefined,
+          ...(field === "name_kr" ? { name_en: undefined } : {}),
         },
       }));
     }
@@ -1244,6 +1312,19 @@ export default function Home() {
             factor_type: "continuous",
             ...defaultContinuousFields(factor.idx),
             levels: "",
+          };
+        }
+        if (field === "name_kr") {
+          const previousSuggestion = suggestedEnglishNameFromKorean(factor.name_kr);
+          const nextSuggestion = suggestedEnglishNameFromKorean(value);
+          const shouldUpdateEnglishName =
+            nextSuggestion &&
+            (!factor.name_en.trim() || factor.name_en === previousSuggestion);
+
+          return {
+            ...factor,
+            name_kr: value,
+            name_en: shouldUpdateEnglishName ? nextSuggestion : factor.name_en,
           };
         }
         return { ...factor, [field]: value };
