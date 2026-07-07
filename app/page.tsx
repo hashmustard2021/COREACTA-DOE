@@ -1033,6 +1033,7 @@ export default function Home() {
   const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
   const [factorPresetSelections, setFactorPresetSelections] =
     useState<Record<number, FactorPresetId>>(initialFactorPresetSelections);
+  const [manualEnglishNameEdits, setManualEnglishNameEdits] = useState<Record<number, boolean>>({});
   const [isBusy, setIsBusy] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [isTourDismissed, setIsTourDismissed] = useState(false);
@@ -1300,6 +1301,7 @@ export default function Home() {
       setProjectGoal("maximize");
       setFactors(defaultFactors);
       setFactorPresetSelections(initialFactorPresetSelections);
+      setManualEnglishNameEdits({});
       setFactorErrors({});
       setIsIntroComplete(false);
       setIsSetupStarted(false);
@@ -1330,6 +1332,18 @@ export default function Home() {
           ...(field === "name_kr" ? { name_en: undefined } : {}),
         },
       }));
+      if (field === "name_en") {
+        setManualEnglishNameEdits((current) => ({
+          ...current,
+          [factorIdx]: value.trim().length > 0,
+        }));
+      }
+      if (field === "factor_type") {
+        setManualEnglishNameEdits((current) => ({
+          ...current,
+          [factorIdx]: false,
+        }));
+      }
     }
     setFactors((current) =>
       current.map((factor, itemIndex) => {
@@ -1353,13 +1367,9 @@ export default function Home() {
           };
         }
         if (field === "name_kr") {
-          const previousSuggestion = suggestedEnglishNameFromKorean(factor.name_kr);
           const nextSuggestion = suggestedEnglishNameFromKorean(value);
           const shouldUpdateEnglishName =
-            nextSuggestion &&
-            (!factor.name_en.trim() ||
-              factor.name_en === previousSuggestion ||
-              isKnownSuggestedEnglishName(factor.name_en));
+            nextSuggestion && !manualEnglishNameEdits[factor.idx];
 
           return {
             ...factor,
@@ -1391,6 +1401,10 @@ export default function Home() {
         ...current,
         [factorIdx]: presetId,
       }));
+      setManualEnglishNameEdits((current) => ({
+        ...current,
+        [factorIdx]: false,
+      }));
     }
     if (presetId === "custom") return;
     if (factorIdx) {
@@ -1409,6 +1423,7 @@ export default function Home() {
   function applyDefaultContinuousFactors() {
     setFactors(defaultFactors);
     setFactorPresetSelections(initialFactorPresetSelections);
+    setManualEnglishNameEdits({});
     setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
@@ -1427,6 +1442,7 @@ export default function Home() {
       3: "solvent",
       4: "material",
     });
+    setManualEnglishNameEdits({});
     setFactorErrors({});
     setIncludeCenterPoints(false);
     setSurfaceData(null);
@@ -1663,6 +1679,7 @@ export default function Home() {
     setProjectGoal("maximize");
     setFactors(defaultFactors);
     setFactorPresetSelections(initialFactorPresetSelections);
+    setManualEnglishNameEdits({});
     setFactorErrors({});
     setIsIntroComplete(false);
     setIntroStep(0);
@@ -1960,6 +1977,12 @@ export default function Home() {
         restoredFactors.reduce<Record<number, FactorPresetId>>((selections, factor) => {
           selections[factor.idx] = factorPresetId(factor);
           return selections;
+        }, {}),
+      );
+      setManualEnglishNameEdits(
+        restoredFactors.reduce<Record<number, boolean>>((edits, factor) => {
+          edits[factor.idx] = Boolean(factor.name_en.trim()) && !isKnownSuggestedEnglishName(factor.name_en);
+          return edits;
         }, {}),
       );
       setFactorErrors({});
