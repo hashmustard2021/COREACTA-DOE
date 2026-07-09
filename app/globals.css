@@ -377,6 +377,18 @@ select:focus {
   padding: 10px 12px;
 }
 
+.intro-flow-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(720px, 100%);
+  margin-top: 26px;
+}
+
+.intro-flow-strip span {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 9px 10px;
+}
+
 .intro-actions {
   display: flex;
   justify-content: center;

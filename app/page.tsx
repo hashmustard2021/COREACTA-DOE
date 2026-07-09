@@ -2189,7 +2189,13 @@ export default function Home() {
             {introStep === 0 && (
               <div className="intro-panel intro-panel-first">
                 <h1>Coreacta DOE</h1>
-                <p className="welcome-slogan">실험을 덜 헤매고 더 근거 있게 진행하도록 돕습니다.</p>
+                <p className="welcome-slogan">4개의 조건을 바꿔보며 가장 좋은 실험 방향을 찾습니다.</p>
+                <div className="service-flow-strip intro-flow-strip" aria-label="Coreacta DOE 진행 흐름">
+                  <span>조건 4개 선택</span>
+                  <span>8회 실험표 생성</span>
+                  <span>결과 입력</span>
+                  <span>분석 확인</span>
+                </div>
                 <div className="intro-actions">
                   <button
                     className="welcome-start-button"
