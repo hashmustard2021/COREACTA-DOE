@@ -1638,6 +1638,28 @@ select:focus {
   font-weight: 700;
 }
 
+.factor-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.type-help-trigger {
+  min-height: 24px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.type-help-trigger:hover {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: rgba(20, 184, 166, 0.18);
+}
+
 .factor-levels {
   grid-column: 1 / -1;
 }

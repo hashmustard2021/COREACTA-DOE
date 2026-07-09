@@ -2405,11 +2405,19 @@ export default function Home() {
                 </div>
                 <div className="factor-fields single-factor-fields">
                   <label className="factor-cell">
-                    <span>조건 유형</span>
+                    <span className="factor-label-row">
+                      조건 유형
+                      <button
+                        className="type-help-trigger"
+                        type="button"
+                        onClick={() => setFactorTypeHelp(activeFactor.factor_type)}
+                        aria-label={`${activeFactor.factor_type === "continuous" ? "숫자 범위형" : "선택형"} 설명 보기`}
+                      >
+                        설명
+                      </button>
+                    </span>
                     <select
                       value={activeFactor.factor_type}
-                      onClick={() => setFactorTypeHelp(activeFactor.factor_type)}
-                      onFocus={() => setFactorTypeHelp(activeFactor.factor_type)}
                       onChange={(event) =>
                         handleFactorTypeChange(
                           conditionStepIndex,
