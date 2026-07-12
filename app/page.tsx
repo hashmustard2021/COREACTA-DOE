@@ -688,6 +688,17 @@ function parseFactorLevels(levels: string) {
     .filter(Boolean);
 }
 
+function categoricalLevelValues(levels: string): [string, string] {
+  const [first = "", second = ""] = levels.split(",").map((level) => level.trim());
+  return [first, second];
+}
+
+function updateCategoricalLevelValue(levels: string, levelIndex: 0 | 1, value: string) {
+  const nextLevels = categoricalLevelValues(levels);
+  nextLevels[levelIndex] = value.replace(/[\n,]/g, " ");
+  return nextLevels.map((level) => level.trim()).join(", ");
+}
+
 function validateYieldInput(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -772,7 +783,7 @@ function validateFactorsForSubmit(factors: FactorInput[]) {
 
     const levels = parseFactorLevels(factor.levels);
     if (levels.length < 2) {
-      addError(factor.idx, "levels", "비교할 후보 2개를 쉼표로 입력해주세요. 예: THF, Toluene");
+      addError(factor.idx, "levels", "비교할 후보 2개를 각각 입력해주세요. 예: THF / Toluene");
     }
     if (levels.length > 2) {
       addError(factor.idx, "levels", "현재 v2 MVP에서는 후보 조건은 2개만 지원합니다.");
@@ -858,7 +869,7 @@ function validateSingleConditionValue(factor: FactorInput) {
   } else {
     const levels = parseFactorLevels(factor.levels);
     if (levels.length < 2) {
-      errors.levels = "비교할 후보 2개를 쉼표로 입력해주세요. 예: THF, Toluene";
+      errors.levels = "비교할 후보 2개를 각각 입력해주세요. 예: THF / Toluene";
     } else if (levels.length > 2) {
       errors.levels = "현재 v2 MVP에서는 후보 조건은 2개만 지원합니다.";
     }
@@ -1208,6 +1219,7 @@ export default function Home() {
   const activeFactorErrors = activeFactor ? factorErrors[activeFactor.idx] ?? {} : {};
   const activeFactorKey = factorKeys[activeConditionIndex] ?? String(activeConditionIndex + 1);
   const activeFactorPresetOptions = presetOptionsForFactorType(activeFactor.factor_type);
+  const activeCategoricalLevelValues = categoricalLevelValues(activeFactor.levels);
   const activeFactorPresetSelection = activeFactorPresetOptions.some(
     (option) => option.id === factorPresetSelections[activeFactor.idx],
   )
@@ -2483,11 +2495,45 @@ export default function Home() {
                       </label>
                     </>
                   ) : (
-                    <label className="factor-cell factor-levels">
-                      <span>선택값 2개</span>
-                      <input className={activeFactorErrors.levels ? "invalid-input" : ""} value={activeFactor.levels} onChange={(event) => updateFactor(valueStepIndex, "levels", event.target.value)} placeholder="예: THF, Toluene" aria-invalid={Boolean(activeFactorErrors.levels)} required />
+                    <div className="factor-levels">
+                      <div className="factor-level-grid">
+                        <label className="factor-cell">
+                          <span>선택값 1</span>
+                          <input
+                            className={activeFactorErrors.levels ? "invalid-input" : ""}
+                            value={activeCategoricalLevelValues[0]}
+                            onChange={(event) =>
+                              updateFactor(
+                                valueStepIndex,
+                                "levels",
+                                updateCategoricalLevelValue(activeFactor.levels, 0, event.target.value),
+                              )
+                            }
+                            placeholder="예: THF"
+                            aria-invalid={Boolean(activeFactorErrors.levels)}
+                            required
+                          />
+                        </label>
+                        <label className="factor-cell">
+                          <span>선택값 2</span>
+                          <input
+                            className={activeFactorErrors.levels ? "invalid-input" : ""}
+                            value={activeCategoricalLevelValues[1]}
+                            onChange={(event) =>
+                              updateFactor(
+                                valueStepIndex,
+                                "levels",
+                                updateCategoricalLevelValue(activeFactor.levels, 1, event.target.value),
+                              )
+                            }
+                            placeholder="예: Toluene"
+                            aria-invalid={Boolean(activeFactorErrors.levels)}
+                            required
+                          />
+                        </label>
+                      </div>
                       {activeFactorErrors.levels && <small className="field-error">{activeFactorErrors.levels}</small>}
-                    </label>
+                    </div>
                   )}
                 </div>
               </article>
