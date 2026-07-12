@@ -379,14 +379,43 @@ select:focus {
 
 .intro-flow-strip {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
   width: min(720px, 100%);
   margin-top: 26px;
 }
 
 .intro-flow-strip span {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   color: var(--muted);
   font-size: 12px;
   padding: 9px 10px;
+}
+
+.intro-flow-strip span:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -14px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.intro-flow-strip b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 900;
+  flex: 0 0 auto;
 }
 
 .intro-actions {
@@ -2372,6 +2401,10 @@ tbody tr:last-child td {
 
   .welcome-screen .onboarding-card {
     margin-top: 22px;
+  }
+
+  .intro-flow-strip span:not(:last-child)::after {
+    display: none;
   }
 }
 

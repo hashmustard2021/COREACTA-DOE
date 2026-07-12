@@ -2191,10 +2191,10 @@ export default function Home() {
                 <h1>Coreacta DOE</h1>
                 <p className="welcome-slogan">4개의 조건을 바꿔보며 가장 좋은 실험 방향을 찾습니다.</p>
                 <div className="service-flow-strip intro-flow-strip" aria-label="Coreacta DOE 진행 흐름">
-                  <span>조건 4개 선택</span>
-                  <span>8회 실험표 생성</span>
-                  <span>결과 입력</span>
-                  <span>분석 확인</span>
+                  <span><b>1</b> 조건 4개 선택</span>
+                  <span><b>2</b> 8회 실험표 생성</span>
+                  <span><b>3</b> 결과 입력</span>
+                  <span><b>4</b> 분석 확인</span>
                 </div>
                 <div className="intro-actions">
                   <button
