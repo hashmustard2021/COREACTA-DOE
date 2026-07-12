@@ -2411,8 +2411,20 @@ export default function Home() {
                 </div>
                 <div className="factor-fields single-factor-fields">
                   <label className="factor-cell">
-                    <span className="factor-label-row">
-                      조건 유형
+                    <span>조건 유형</span>
+                    <div className="factor-select-with-help">
+                      <select
+                        value={activeFactor.factor_type}
+                        onChange={(event) =>
+                          handleFactorTypeChange(
+                            conditionStepIndex,
+                            event.target.value as FactorInput["factor_type"],
+                          )
+                        }
+                      >
+                        <option value="continuous">숫자 범위형</option>
+                        <option value="categorical">선택형</option>
+                      </select>
                       <button
                         className="type-help-trigger"
                         type="button"
@@ -2421,19 +2433,7 @@ export default function Home() {
                       >
                         설명
                       </button>
-                    </span>
-                    <select
-                      value={activeFactor.factor_type}
-                      onChange={(event) =>
-                        handleFactorTypeChange(
-                          conditionStepIndex,
-                          event.target.value as FactorInput["factor_type"],
-                        )
-                      }
-                    >
-                      <option value="continuous">숫자 범위형</option>
-                      <option value="categorical">선택형</option>
-                    </select>
+                    </div>
                   </label>
                   <label className="factor-cell">
                     <span>기본 조건</span>

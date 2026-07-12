@@ -1679,20 +1679,20 @@ select:focus {
   font-weight: 700;
 }
 
-.factor-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.factor-select-with-help {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  align-items: center;
 }
 
 .type-help-trigger {
-  min-height: 24px;
+  min-height: 38px;
   border: 1px solid rgba(15, 118, 110, 0.18);
   background: var(--accent-soft);
   color: var(--accent-strong);
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 
