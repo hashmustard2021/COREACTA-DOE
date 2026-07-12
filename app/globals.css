@@ -1680,19 +1680,27 @@ select:focus {
 }
 
 .factor-select-with-help {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  position: relative;
+  display: block;
+}
+
+.factor-select-with-help select {
+  padding-right: 86px;
 }
 
 .type-help-trigger {
-  min-height: 38px;
+  position: absolute;
+  top: 50%;
+  right: 34px;
+  z-index: 1;
+  min-height: 26px;
+  transform: translateY(-50%);
   border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 7px;
   background: var(--accent-soft);
   color: var(--accent-strong);
-  padding: 0 10px;
-  font-size: 12px;
+  padding: 0 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
