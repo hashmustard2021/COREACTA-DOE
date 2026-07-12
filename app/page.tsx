@@ -2281,9 +2281,9 @@ export default function Home() {
 
             {introStep === 3 && (
               <div className="intro-panel">
-                <h1>실험표와 분석을 받아요</h1>
+                <h1>실험표를 만들고 결과를 확인해요</h1>
                 <p className="welcome-description">
-                  정해진 조합대로 실험하고 결과를 입력하면 중요한 조건과 다음 실험 방향을 보여줍니다.
+                  정해진 조합대로 실험한 뒤 결과를 입력하면, 어떤 조건이 중요한지 확인할 수 있어요.
                 </p>
                 <div className="intro-actions">
                   <button className="secondary-button" type="button" onClick={() => setIntroStep(2)}>
