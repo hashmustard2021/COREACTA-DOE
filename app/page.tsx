@@ -2475,10 +2475,10 @@ export default function Home() {
                   <strong>조건 {activeFactorKey}</strong>
                   <span>{activeFactor.name_kr} / {activeFactor.name_en}</span>
                 </div>
-                <div className="factor-fields single-factor-fields">
+                <div className={activeFactor.factor_type === "continuous" ? "factor-fields single-factor-fields continuous-value-fields" : "factor-fields single-factor-fields"}>
                   {activeFactor.factor_type === "continuous" ? (
                     <>
-                      <label className="factor-cell">
+                      <label className="factor-cell continuous-unit-cell">
                         <span>단위</span>
                         <input className={activeFactorErrors.unit ? "invalid-input" : ""} value={activeFactor.unit} placeholder="예: °C" onChange={(event) => updateFactor(valueStepIndex, "unit", event.target.value)} aria-invalid={Boolean(activeFactorErrors.unit)} required />
                         {activeFactorErrors.unit && <small className="field-error">{activeFactorErrors.unit}</small>}

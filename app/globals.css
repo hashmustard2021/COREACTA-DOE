@@ -1071,6 +1071,14 @@ select:focus {
   grid-template-columns: 1fr;
 }
 
+.continuous-value-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.continuous-unit-cell {
+  grid-column: 1 / -1;
+}
+
 .single-field {
   min-height: 210px;
   justify-content: center;
