@@ -593,13 +593,13 @@ function getCookie(name: string) {
 
 let csrfTokenCache = "";
 
-async function ensureCsrfToken() {
+async function ensureCsrfToken(forceRefresh = false) {
   const cookieToken = getCookie("csrftoken");
-  if (cookieToken) {
+  if (cookieToken && !forceRefresh) {
     csrfTokenCache = cookieToken;
     return cookieToken;
   }
-  if (csrfTokenCache) return csrfTokenCache;
+  if (csrfTokenCache && !forceRefresh) return csrfTokenCache;
 
   const response = await fetch(`${API_BASE_URL}/api/auth/csrf/`, {
     credentials: "include",
@@ -617,26 +617,41 @@ async function ensureCsrfToken() {
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method?.toUpperCase() ?? "GET";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((init?.headers as Record<string, string> | undefined) ?? {}),
-  };
+  const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(method);
 
-  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    const csrfToken = await ensureCsrfToken();
-    if (!csrfToken) {
-      throw new Error("CSRF token is missing. Please refresh the page and try again.");
+  async function buildHeaders(forceRefreshCsrf = false) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...((init?.headers as Record<string, string> | undefined) ?? {}),
+    };
+
+    if (isUnsafeMethod) {
+      const csrfToken = await ensureCsrfToken(forceRefreshCsrf);
+      if (!csrfToken) {
+        throw new Error("CSRF token is missing. Please refresh the page and try again.");
+      }
+      headers["X-CSRFToken"] = csrfToken;
     }
-    headers["X-CSRFToken"] = csrfToken;
+
+    return headers;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    mode: "cors",
-    cache: "no-store",
-    headers,
-  });
+  async function sendRequest(forceRefreshCsrf = false) {
+    return fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      credentials: "include",
+      mode: "cors",
+      cache: "no-store",
+      headers: await buildHeaders(forceRefreshCsrf),
+    });
+  }
+
+  let response = await sendRequest();
+  if (response.status === 403 && isUnsafeMethod) {
+    csrfTokenCache = "";
+    response = await sendRequest(true);
+  }
+
   const latestCookieToken = getCookie("csrftoken");
   if (latestCookieToken) {
     csrfTokenCache = latestCookieToken;
