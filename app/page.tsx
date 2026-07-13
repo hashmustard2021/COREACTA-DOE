@@ -675,6 +675,11 @@ function formatFactorValue(run: DesignRun, factorKey: string) {
   return run.values[factorKey] ?? "-";
 }
 
+function isCenterDesignRun(run: DesignRun) {
+  const levels = Object.values(run.levels);
+  return levels.length > 0 && levels.every((level) => Number(level) === 0);
+}
+
 function formatEffect(effect: number | null) {
   if (effect === null) return "-";
   return Number(effect).toFixed(2);
@@ -2754,18 +2759,40 @@ export default function Home() {
                   <td colSpan={5}>실험표를 생성하면 실험 조합이 표시됩니다.</td>
                 </tr>
               ) : (
-                designRuns.map((run) => (
-                  <tr key={run.id}>
-                    <td className="run-column">
-                      <span className="run-badge">Run {run.run_order}</span>
-                    </td>
-                    {factorKeys.map((factorKey) => (
-                      <td className="numeric-cell" key={factorKey}>
-                        {formatFactorValue(run, factorKey)}
+                designRuns.map((run) => {
+                  const isCenterRun = isCenterDesignRun(run);
+                  return (
+                    <tr className={isCenterRun ? "center-run-row" : undefined} key={run.id}>
+                      <td className="run-column">
+                        <span className={isCenterRun ? "run-badge center-run-badge" : "run-badge"}>
+                          <span>Run {run.run_order}</span>
+                          {isCenterRun && <small>중간값</small>}
+                        </span>
                       </td>
-                    ))}
-                  </tr>
-                ))
+                      {factors.map((factor) => {
+                        const factorKey = "ABCD"[factor.idx - 1];
+                        const value = formatFactorValue(run, factorKey);
+                        const isCenterUnavailable =
+                          isCenterRun && factor.factor_type === "categorical" && !value.trim();
+                        return (
+                          <td className="numeric-cell" key={factorKey}>
+                            {isCenterUnavailable ? (
+                              <span className="center-unavailable">
+                                <span>중간값 없음</span>
+                                <small>선택형 조건</small>
+                              </span>
+                            ) : (
+                              <span className="design-value">
+                                <span>{value}</span>
+                                {isCenterRun && <small>중간값</small>}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -2806,36 +2833,42 @@ export default function Home() {
                   <td colSpan={2}>실험표를 먼저 생성해주세요.</td>
                 </tr>
               ) : (
-                designRuns.map((run, index) => (
-                  <tr key={run.id}>
-                    <td className="run-column">
-                      <span className="run-badge">Run {run.run_order}</span>
-                    </td>
-                    <td className="numeric-cell">
-                      <div className="result-cell">
-                        <input
-                          ref={(element) => {
-                            yieldInputRefs.current[index] = element;
-                          }}
-                          className={
-                            yieldErrors[run.run_order]
-                              ? "yield-input numeric-input invalid-input"
-                              : "yield-input numeric-input"
-                          }
-                          inputMode="decimal"
-                          value={yields[run.run_order] ?? ""}
-                          onChange={(event) => updateYield(run.run_order, event.target.value)}
-                          onKeyDown={(event) => focusNextYieldInput(event, index)}
-                          aria-invalid={Boolean(yieldErrors[run.run_order])}
-                          placeholder="예: 61.5"
-                        />
-                        {yieldErrors[run.run_order] && (
-                          <small className="field-error">{yieldErrors[run.run_order]}</small>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                designRuns.map((run, index) => {
+                  const isCenterRun = isCenterDesignRun(run);
+                  return (
+                    <tr className={isCenterRun ? "center-run-row" : undefined} key={run.id}>
+                      <td className="run-column">
+                        <span className={isCenterRun ? "run-badge center-run-badge" : "run-badge"}>
+                          <span>Run {run.run_order}</span>
+                          {isCenterRun && <small>중간값</small>}
+                        </span>
+                      </td>
+                      <td className="numeric-cell">
+                        <div className="result-cell">
+                          <input
+                            ref={(element) => {
+                              yieldInputRefs.current[index] = element;
+                            }}
+                            className={
+                              yieldErrors[run.run_order]
+                                ? "yield-input numeric-input invalid-input"
+                                : "yield-input numeric-input"
+                            }
+                            inputMode="decimal"
+                            value={yields[run.run_order] ?? ""}
+                            onChange={(event) => updateYield(run.run_order, event.target.value)}
+                            onKeyDown={(event) => focusNextYieldInput(event, index)}
+                            aria-invalid={Boolean(yieldErrors[run.run_order])}
+                            placeholder="예: 61.5"
+                          />
+                          {yieldErrors[run.run_order] && (
+                            <small className="field-error">{yieldErrors[run.run_order]}</small>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

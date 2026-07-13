@@ -1664,6 +1664,20 @@ select:focus {
   padding: 4px 9px;
 }
 
+.center-run-badge {
+  flex-direction: column;
+  gap: 1px;
+  min-width: 76px;
+  min-height: 42px;
+  line-height: 1.15;
+}
+
+.center-run-badge small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .factor-row-heading span {
   overflow: hidden;
   color: var(--text);
@@ -1894,12 +1908,36 @@ tbody tr:last-child td {
 }
 
 .design-table .run-column {
-  width: 108px;
+  width: 128px;
 }
 
 .results-table .numeric-column,
 .results-table .numeric-cell {
   text-align: right;
+}
+
+.center-run-row td {
+  background: rgba(20, 184, 166, 0.04);
+}
+
+.design-value,
+.center-unavailable {
+  display: inline-grid;
+  gap: 3px;
+  justify-items: center;
+  line-height: 1.2;
+}
+
+.design-value small,
+.center-unavailable small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.center-unavailable {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .yield-input {
