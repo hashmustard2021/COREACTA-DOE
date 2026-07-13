@@ -2806,17 +2806,6 @@ export default function Home() {
             <h2>측정 결과 입력</h2>
             <p>각 실험 후 얻은 결과값을 입력하세요.</p>
           </div>
-          <div className="button-group">
-            <button
-              className={completedResultCount > 0 ? "secondary-button" : "tour-target"}
-              type="button"
-              onClick={handleSubmitResults}
-              disabled={!project || designRuns.length === 0 || isBusy}
-            >
-              <Send size={16} />
-              실험 결과 저장하기
-            </button>
-          </div>
         </div>
 
         <div className="table-wrap compact-wrap">
@@ -2872,6 +2861,17 @@ export default function Home() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="results-save-action compact-wrap">
+          <button
+            className={completedResultCount > 0 ? "secondary-button" : "tour-target"}
+            type="button"
+            onClick={handleSubmitResults}
+            disabled={!project || designRuns.length === 0 || isBusy}
+          >
+            <Send size={16} />
+            결과 저장
+          </button>
         </div>
         {designRuns.length > 0 && (
           <div className="history-panel">
