@@ -66,7 +66,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "EXCEPTION_HANDLER": "doe.exceptions.api_exception_handler",
 }
+
+CSRF_FAILURE_VIEW = "coreacta.views.csrf_failure"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -162,3 +165,31 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "%(levelname)s %(name)s %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "django.security.csrf": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "doe.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+}

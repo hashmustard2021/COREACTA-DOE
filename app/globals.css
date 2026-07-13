@@ -699,6 +699,10 @@ select:focus {
   margin: 0 0 18px;
 }
 
+.workspace-header-card .onboarding-card {
+  margin-top: 18px;
+}
+
 .onboarding-card::after {
   display: none;
 }

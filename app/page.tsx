@@ -1178,7 +1178,7 @@ export default function Home() {
   const tourSteps = project
     ? [
         {
-          title: "먼저 실험표를 확인하세요",
+          title: "먼저 아래의 실험표를 확인하세요",
           body: "위에서 만든 조합대로 실험을 수행한 뒤, 아래 결과 입력으로 이동하면 됩니다.",
         },
         {

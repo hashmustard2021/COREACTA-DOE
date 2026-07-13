@@ -1,4 +1,5 @@
 import csv
+import logging
 from io import StringIO
 
 from django.contrib.auth import login, logout
@@ -29,6 +30,9 @@ from .services import (
     create_fractional_factorial_design,
     upsert_result,
 )
+
+
+security_logger = logging.getLogger("doe.security")
 
 
 @api_view(["GET"])
@@ -340,6 +344,7 @@ def require_authenticated(request):
     return api_error(
         "Session expired. Please log in again.",
         status_code=status.HTTP_401_UNAUTHORIZED,
+        request=request,
     )
 
 
@@ -358,7 +363,17 @@ def api_success(data, status_code=status.HTTP_200_OK, message=""):
     )
 
 
-def api_error(message, status_code=status.HTTP_400_BAD_REQUEST):
+def api_error(message, status_code=status.HTTP_400_BAD_REQUEST, request=None):
+    if status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}:
+        security_logger.warning(
+            "api_error status=%s method=%s path=%s user=%s authenticated=%s message=%r",
+            status_code,
+            getattr(request, "method", ""),
+            request.get_full_path() if request else "",
+            getattr(getattr(request, "user", None), "username", "anonymous"),
+            getattr(getattr(request, "user", None), "is_authenticated", False),
+            message,
+        )
     return Response(
         {
             "success": False,
