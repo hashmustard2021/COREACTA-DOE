@@ -1058,6 +1058,7 @@ export default function Home() {
   const [yieldErrors, setYieldErrors] = useState<YieldErrors>({});
   const [report, setReport] = useState<Report | null>(null);
   const [resultHistory, setResultHistory] = useState<ResultHistoryRecord[]>([]);
+  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Record<number, boolean>>({});
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
@@ -1120,6 +1121,7 @@ export default function Home() {
       return grouped;
     }, {});
   }, [resultHistory]);
+  const totalHistoryCount = resultHistory.length;
   const paretoData = useMemo(() => {
     if (!report) return [];
     return report.pareto
@@ -2875,36 +2877,50 @@ export default function Home() {
         </div>
         {designRuns.length > 0 && (
           <div className="history-panel">
-            {designRuns.map((run) => {
-              const runHistory = historyByRun[run.run_order] ?? [];
-              const isExpanded = Boolean(expandedHistoryRuns[run.run_order]);
-              return (
-                <div className="history-run" key={run.id}>
-                  <button
-                    className="secondary-button compact-button"
-                    type="button"
-                    onClick={() => toggleRunHistory(run.run_order)}
-                  >
-                    Run {run.run_order} 수정 이력 {runHistory.length}
-                  </button>
-                  {isExpanded && (
-                    <div className="history-list">
-                      {runHistory.length === 0 ? (
-                        <p className="empty-state">수정 이력이 없습니다.</p>
-                      ) : (
-                        runHistory.map((item) => (
-                          <div className="history-item" key={item.id}>
-                            <strong>{item.old_y} -&gt; {item.new_y}</strong>
-                            <span>{item.changed_by}</span>
-                            <time>{new Date(item.changed_at).toLocaleString()}</time>
-                          </div>
-                        ))
+            <button
+              className="history-panel-toggle"
+              type="button"
+              onClick={() => setIsHistoryPanelOpen((current) => !current)}
+              aria-expanded={isHistoryPanelOpen}
+            >
+              <span>수정 이력 보기</span>
+              <small>{totalHistoryCount}개 기록</small>
+              <span aria-hidden="true">{isHistoryPanelOpen ? "접기" : "펼치기"}</span>
+            </button>
+            {isHistoryPanelOpen && (
+              <div className="history-run-list">
+                {designRuns.map((run) => {
+                  const runHistory = historyByRun[run.run_order] ?? [];
+                  const isExpanded = Boolean(expandedHistoryRuns[run.run_order]);
+                  return (
+                    <div className="history-run" key={run.id}>
+                      <button
+                        className="secondary-button compact-button"
+                        type="button"
+                        onClick={() => toggleRunHistory(run.run_order)}
+                      >
+                        Run {run.run_order} 수정 이력 {runHistory.length}
+                      </button>
+                      {isExpanded && (
+                        <div className="history-list">
+                          {runHistory.length === 0 ? (
+                            <p className="empty-state">수정 이력이 없습니다.</p>
+                          ) : (
+                            runHistory.map((item) => (
+                              <div className="history-item" key={item.id}>
+                                <strong>{item.old_y} -&gt; {item.new_y}</strong>
+                                <span>{item.changed_by}</span>
+                                <time>{new Date(item.changed_at).toLocaleString()}</time>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </section>

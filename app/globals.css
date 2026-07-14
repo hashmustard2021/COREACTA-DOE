@@ -1979,8 +1979,40 @@ tbody tr:last-child td {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+  max-width: 540px;
 }
 
+.history-panel-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 0 12px;
+  text-align: left;
+}
+
+.history-panel-toggle span:first-child {
+  font-weight: 800;
+}
+
+.history-panel-toggle small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.history-panel-toggle span:last-child {
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.history-run-list,
 .history-run {
   display: grid;
   gap: 8px;
