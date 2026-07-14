@@ -1728,6 +1728,9 @@ export default function Home() {
     setSurfaceData(null);
     setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
     setTourStep(0);
+    setIsHistoryPanelOpen(false);
+    setErrorText("");
+    setStatusText("");
   }
 
   function startNewExperiment(intentOverride?: string) {
