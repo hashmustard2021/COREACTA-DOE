@@ -1075,6 +1075,7 @@ export default function Home() {
   const [surfaceXFactor, setSurfaceXFactor] = useState(factorDisplayName(defaultFactors[0]));
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const designTableSectionRef = useRef<HTMLElement | null>(null);
+  const resultsInputSectionRef = useRef<HTMLElement | null>(null);
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const factorCount = factors.length;
@@ -1196,6 +1197,14 @@ export default function Home() {
       block: "start",
     });
     designTableSectionRef.current?.focus({ preventScroll: true });
+  }
+
+  function focusResultsInput() {
+    resultsInputSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    resultsInputSectionRef.current?.focus({ preventScroll: true });
   }
 
   const tourSteps = project
@@ -2799,7 +2808,13 @@ export default function Home() {
           <div>
             <span>Design Table</span>
             <h2>먼저 수행할 실험표</h2>
-            <p>아래 조합대로 실험을 수행한 뒤 결과값을 입력하세요.</p>
+            <p>
+              아래 조합대로 실험을 수행한 뒤 결과값을{" "}
+              <button className="inline-focus-link" type="button" onClick={focusResultsInput}>
+                입력
+              </button>
+              하세요.
+            </p>
           </div>
           <button
             className="secondary-button"
@@ -2872,7 +2887,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="card workspace-section results-section">
+      <section
+        className="card workspace-section results-section"
+        ref={resultsInputSectionRef}
+        tabIndex={-1}
+      >
         <div className="card-heading">
           <div>
             <span>Results Input</span>
