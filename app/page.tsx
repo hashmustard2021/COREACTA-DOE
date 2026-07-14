@@ -4,6 +4,7 @@ import {
   Fragment,
   FormEvent,
   KeyboardEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -1005,7 +1006,7 @@ function OnboardingCard({
 }: {
   step: number;
   total: number;
-  title: string;
+  title: ReactNode;
   body: string;
   onNext: () => void;
   onClose: () => void;
@@ -1073,6 +1074,7 @@ export default function Home() {
   );
   const [surfaceXFactor, setSurfaceXFactor] = useState(factorDisplayName(defaultFactors[0]));
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
+  const designTableSectionRef = useRef<HTMLElement | null>(null);
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const factorCount = factors.length;
@@ -1187,11 +1189,28 @@ export default function Home() {
       detail: report ? "리포트 준비됨" : "결과 저장 후 확인",
     },
   ];
+
+  function focusDesignTable() {
+    designTableSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    designTableSectionRef.current?.focus({ preventScroll: true });
+  }
+
   const tourSteps = project
     ? [
         {
-          title: "먼저 아래의 실험표를 확인하세요",
-          body: "위에서 만든 조합대로 실험을 수행한 뒤, 아래 결과 입력으로 이동하면 됩니다.",
+          title: (
+            <>
+              먼저{" "}
+              <button className="inline-focus-link" type="button" onClick={focusDesignTable}>
+                아래
+              </button>
+              의 실험표를 확인하세요
+            </>
+          ),
+          body: "실험표의 조합대로 실험을 수행한 뒤, 결과 입력으로 이동하면 됩니다.",
         },
         {
           title: "결과값을 입력하고 저장하세요",
@@ -2775,7 +2794,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="card workspace-section">
+      <section className="card workspace-section" ref={designTableSectionRef} tabIndex={-1}>
         <div className="card-heading">
           <div>
             <span>Design Table</span>
