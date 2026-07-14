@@ -1705,6 +1705,16 @@ select:focus {
   font-weight: 700;
 }
 
+.factor-count-cell {
+  grid-column: 1 / -1;
+}
+
+.factor-count-cell small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .factor-select-with-help {
   position: relative;
   display: block;

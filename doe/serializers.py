@@ -152,7 +152,13 @@ class ProjectListSerializer(serializers.ModelSerializer):
         ]
 
     def get_run_budget(self, obj):
-        return obj.run_budget or obj.design_runs.count() or 8
+        if obj.run_budget:
+            return obj.run_budget
+        design_run_count = obj.design_runs.count()
+        if design_run_count:
+            return design_run_count
+        factor_count = obj.factors.count()
+        return 8 if factor_count >= 4 else 2 ** max(factor_count, 1)
 
     def get_response_name(self, obj):
         return obj.response_name or "Yield"

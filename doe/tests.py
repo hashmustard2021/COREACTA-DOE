@@ -365,6 +365,19 @@ class SuzukiCouplingDoeApiTests(APITestCase):
         self.assertEqual(design[7]["run_order"], 8)
         self.assertEqual(design[7]["levels"], {"A": 1, "B": 1, "C": 1, "D": 1})
 
+    def test_design_creation_api_supports_two_factor_design(self):
+        payload = {
+            **self.project_payload,
+            "factors": self.project_payload["factors"][:2],
+        }
+        project = self.create_project(payload)
+        design = self.create_design(project["id"])
+
+        self.assertEqual(len(design), 4)
+        self.assertEqual([run["run_order"] for run in design], [1, 2, 3, 4])
+        self.assertEqual(design[0]["levels"], {"A": -1, "B": -1})
+        self.assertEqual(design[3]["levels"], {"A": 1, "B": 1})
+
     def test_mixed_categorical_design_report_exports_and_surface_guard(self):
         project = self.create_project(self.mixed_factor_payload)
         design = self.create_design(project["id"])

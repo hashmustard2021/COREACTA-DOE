@@ -59,7 +59,7 @@ def build_project_report_pdf(project):
     )
     story.append(Spacer(1, 8))
 
-    story.append(section_title("8-run Design and Results", styles))
+    story.append(section_title(f"{len(runs)}-run Design and Results", styles))
     design_header = ["Run", *[factor.display_name for factor in factors], "수율(Yield, %)"]
     design_rows = []
     for run in runs:

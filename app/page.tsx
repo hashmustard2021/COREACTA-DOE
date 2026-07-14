@@ -49,22 +49,18 @@ type ApiResponse<T> = {
   message: string;
 };
 
-const guidedWizardSteps = [
-  "조건 1",
-  "조건 2",
-  "조건 3",
-  "조건 4",
-  "조건 1 값",
-  "조건 2 값",
-  "조건 3 값",
-  "조건 4 값",
-  "측정 결과",
-  "목표",
-  "프로젝트명",
-  "실험표 생성",
-];
+const FACTOR_KEYS = "ABCD";
 
-const WIZARD_LAST_STEP = guidedWizardSteps.length - 1;
+function buildGuidedWizardSteps(factorCount: number) {
+  const conditionSteps = Array.from({ length: factorCount }, (_, index) => `조건 ${index + 1}`);
+  const valueSteps = Array.from({ length: factorCount }, (_, index) => `조건 ${index + 1} 값`);
+  return [...conditionSteps, ...valueSteps, "측정 결과", "목표", "프로젝트명", "실험표 생성"];
+}
+
+function expectedDesignRunCount(factorCount: number, includesCenterPoints: boolean) {
+  const baseRunCount = factorCount >= 4 ? 8 : 2 ** factorCount;
+  return baseRunCount + (includesCenterPoints ? 3 : 0);
+}
 
 const objectiveSuggestions = [
   { label: "수율 높이기", prompt: "수율을 높이고 싶어요" },
@@ -1079,12 +1075,21 @@ export default function Home() {
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
+  const factorCount = factors.length;
+  const guidedWizardSteps = useMemo(() => buildGuidedWizardSteps(factorCount), [factorCount]);
+  const wizardLastStep = guidedWizardSteps.length - 1;
+  const resultNameStep = factorCount * 2;
+  const goalStep = resultNameStep + 1;
+  const projectNameStep = resultNameStep + 2;
+  const summaryStep = resultNameStep + 3;
   const factorKeys = useMemo(
-    () => factors.map((factor) => "ABCD"[factor.idx - 1]),
+    () => factors.map((factor) => FACTOR_KEYS[factor.idx - 1]),
     [factors],
   );
   const surfaceFactorOptions = useMemo(() => continuousFactors(factors), [factors]);
   const hasContinuousFactor = surfaceFactorOptions.length > 0;
+  const includeCenterRuns = includeCenterPoints && hasContinuousFactor;
+  const expectedRunCount = expectedDesignRunCount(factorCount, includeCenterRuns);
   const mainEffectData = useMemo(() => {
     if (!report) return [];
 
@@ -1200,8 +1205,8 @@ export default function Home() {
     : isIntroComplete
       ? [
           {
-            title: "조건 4개부터 고르세요",
-            body: "처음이라면 기본값 그대로 시작해도 됩니다. 조건명은 나중에 바꿀 수 있습니다.",
+            title: "조건 수와 조건명을 고르세요",
+            body: "조건은 1개부터 4개까지 선택할 수 있습니다. 처음이라면 기본값 그대로 시작해도 됩니다.",
           },
           {
             title: "각 조건의 값을 확인하세요",
@@ -1233,9 +1238,11 @@ export default function Home() {
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
   const showTour = currentUser && isIntroComplete && !isTourDismissed && activeTourStep;
   const introSteps = ["소개", "목표", "조건", "분석", "시작"];
-  const wizardPhaseIndex = wizardStep <= 3 ? 0 : wizardStep <= 7 ? 1 : wizardStep <= 10 ? 2 : 3;
-  const conditionStepIndex = wizardStep >= 0 && wizardStep <= 3 ? wizardStep : null;
-  const valueStepIndex = wizardStep >= 4 && wizardStep <= 7 ? wizardStep - 4 : null;
+  const wizardPhaseIndex =
+    wizardStep < factorCount ? 0 : wizardStep < resultNameStep ? 1 : wizardStep < summaryStep ? 2 : 3;
+  const conditionStepIndex = wizardStep >= 0 && wizardStep < factorCount ? wizardStep : null;
+  const valueStepIndex =
+    wizardStep >= factorCount && wizardStep < resultNameStep ? wizardStep - factorCount : null;
   const activeConditionIndex = conditionStepIndex ?? valueStepIndex ?? 0;
   const activeFactor = factors[activeConditionIndex] ?? factors[0];
   const activeFactorErrors = activeFactor ? factorErrors[activeFactor.idx] ?? {} : {};
@@ -1482,10 +1489,39 @@ export default function Home() {
     setSurfaceData(null);
   }
 
+  function updateFactorCount(nextCount: number) {
+    const clampedCount = Math.max(1, Math.min(4, nextCount));
+    const nextFactors = Array.from({ length: clampedCount }, (_, index) => {
+      const existing = factors[index];
+      if (existing) return { ...existing, idx: index + 1 };
+      return { ...defaultFactors[index], idx: index + 1 };
+    });
+
+    setFactors(nextFactors);
+    setFactorPresetSelections((current) =>
+      nextFactors.reduce<Record<number, FactorPresetId>>((selections, factor, index) => {
+        selections[factor.idx] = current[factor.idx] ?? initialFactorPresetSelections[index + 1] ?? "custom";
+        return selections;
+      }, {}),
+    );
+    setFactorErrors((current) =>
+      nextFactors.reduce<FactorFieldErrors>((errors, factor) => {
+        if (current[factor.idx]) {
+          errors[factor.idx] = current[factor.idx];
+        }
+        return errors;
+      }, {}),
+    );
+    setWizardStep((current) => Math.min(current, buildGuidedWizardSteps(clampedCount).length - 1));
+    setSurfaceData(null);
+    setErrorText("");
+    setStatusText("");
+  }
+
   function goToWizardStep(nextStep: number) {
     setErrorText("");
     setStatusText("");
-    const clampedStep = Math.max(0, Math.min(nextStep, WIZARD_LAST_STEP));
+    const clampedStep = Math.max(0, Math.min(nextStep, wizardLastStep));
     setWizardStep(clampedStep);
     setTourStep(Math.min(clampedStep, 3));
   }
@@ -1519,7 +1555,7 @@ export default function Home() {
       setStatusText("");
       return;
     }
-    goToWizardStep(index + 5);
+    goToWizardStep(factorCount + index + 1);
   }
 
   function proceedFromResultSettings() {
@@ -1528,11 +1564,11 @@ export default function Home() {
       setStatusText("");
       return;
     }
-    goToWizardStep(9);
+    goToWizardStep(goalStep);
   }
 
   function proceedFromGoalSettings() {
-    goToWizardStep(10);
+    goToWizardStep(projectNameStep);
   }
 
   function proceedFromProjectName() {
@@ -1541,7 +1577,7 @@ export default function Home() {
       setStatusText("");
       return;
     }
-    goToWizardStep(11);
+    goToWizardStep(summaryStep);
   }
 
   function focusNextYieldInput(
@@ -1585,7 +1621,7 @@ export default function Home() {
 
   async function handleGenerateDesign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (wizardStep !== WIZARD_LAST_STEP) {
+    if (wizardStep !== wizardLastStep) {
       return;
     }
     const validationResult = validateFactorsForSubmit(factors);
@@ -1615,8 +1651,8 @@ export default function Home() {
           slogan: projectSlogan,
           response_name: responseName,
           goal: projectGoal,
-          include_center_points: includeCenterPoints && hasContinuousFactor,
-          run_budget: includeCenterPoints && hasContinuousFactor ? 11 : 8,
+          include_center_points: includeCenterRuns,
+          run_budget: expectedRunCount,
           factors: factors.map(serializeFactorInput),
         }),
       });
@@ -1625,7 +1661,7 @@ export default function Home() {
         {
           method: "POST",
           body: JSON.stringify({
-            include_center_points: includeCenterPoints && hasContinuousFactor,
+            include_center_points: includeCenterRuns,
           }),
         },
       );
@@ -1668,8 +1704,8 @@ export default function Home() {
           slogan: projectSlogan,
           response_name: responseName,
           goal: projectGoal,
-          include_center_points: includeCenterPoints && hasContinuousFactor,
-          run_budget: includeCenterPoints && hasContinuousFactor ? 11 : 8,
+          include_center_points: includeCenterRuns,
+          run_budget: expectedRunCount,
         }),
       });
 
@@ -2226,10 +2262,10 @@ export default function Home() {
             {introStep === 0 && (
               <div className="intro-panel intro-panel-first">
                 <h1>Coreacta DOE</h1>
-                <p className="welcome-slogan">4개의 조건을 바꿔보며 가장 좋은 실험 방향을 찾습니다.</p>
+                <p className="welcome-slogan">1개부터 최대 4개의 조건을 바꿔보며 가장 좋은 실험 방향을 찾습니다.</p>
                 <div className="service-flow-strip intro-flow-strip" aria-label="Coreacta DOE 진행 흐름">
-                  <span><b>1</b> 조건 4개 선택</span>
-                  <span><b>2</b> 8회 실험표 생성</span>
+                  <span><b>1</b> 조건 수와 조건 선택</span>
+                  <span><b>2</b> 조건 수에 맞는 실험표 생성</span>
                   <span><b>3</b> 결과 입력</span>
                   <span><b>4</b> 분석 확인</span>
                 </div>
@@ -2407,18 +2443,18 @@ export default function Home() {
             <h2>
               {conditionStepIndex !== null && `바꿔볼 조건 ${conditionStepIndex + 1}을 정해주세요`}
               {valueStepIndex !== null && `${activeFactor.name_kr || `조건 ${valueStepIndex + 1}`}의 값을 입력해주세요`}
-              {wizardStep === 8 && "무엇을 비교할까요?"}
-              {wizardStep === 9 && "어떤 방향이 좋은 결과인가요?"}
-              {wizardStep === 10 && "프로젝트 이름을 정해주세요"}
-              {wizardStep === 11 && "실험표를 생성할 준비가 되었습니다"}
+              {wizardStep === resultNameStep && "무엇을 비교할까요?"}
+              {wizardStep === goalStep && "어떤 방향이 좋은 결과인가요?"}
+              {wizardStep === projectNameStep && "프로젝트 이름을 정해주세요"}
+              {wizardStep === summaryStep && "실험표를 생성할 준비가 되었습니다"}
             </h2>
             <p>
               {conditionStepIndex !== null && "결과에 영향을 줄 것 같은 조건을 하나만 확인하세요. 잘 모르겠다면 기본값 그대로 다음으로 넘어가도 됩니다."}
               {valueStepIndex !== null && "이 조건에서 비교할 두 끝값을 입력합니다. 선택형 조건은 후보 2개만 적으면 됩니다."}
-              {wizardStep === 8 && "실험 후 매번 기록할 측정 결과 이름을 하나 입력합니다."}
-              {wizardStep === 9 && "측정 결과가 커질수록 좋은지, 작아질수록 좋은지만 선택합니다."}
-              {wizardStep === 10 && "나중에 다시 찾기 쉬운 이름을 붙여주세요."}
-              {wizardStep === 11 && "입력한 조건과 측정 결과를 확인한 뒤 실험표를 생성합니다."}
+              {wizardStep === resultNameStep && "실험 후 매번 기록할 측정 결과 이름을 하나 입력합니다."}
+              {wizardStep === goalStep && "측정 결과가 커질수록 좋은지, 작아질수록 좋은지만 선택합니다."}
+              {wizardStep === projectNameStep && "나중에 다시 찾기 쉬운 이름을 붙여주세요."}
+              {wizardStep === summaryStep && "입력한 조건과 측정 결과를 확인한 뒤 실험표를 생성합니다."}
             </p>
           </div>
 
@@ -2447,6 +2483,19 @@ export default function Home() {
                   <span>{activeFactor.factor_type === "continuous" ? "숫자 범위형" : "선택형"}</span>
                 </div>
                 <div className="factor-fields single-factor-fields">
+                  {conditionStepIndex === 0 && (
+                    <label className="factor-cell factor-count-cell">
+                      <span>조건 수</span>
+                      <select value={factorCount} onChange={(event) => updateFactorCount(Number(event.target.value))}>
+                        {[1, 2, 3, 4].map((count) => (
+                          <option key={count} value={count}>
+                            조건 {count}개
+                          </option>
+                        ))}
+                      </select>
+                      <small>선택한 수만큼 조건과 값을 하나씩 입력합니다.</small>
+                    </label>
+                  )}
                   <label className="factor-cell">
                     <span>조건 유형</span>
                     <div className="factor-select-with-help">
@@ -2564,14 +2613,14 @@ export default function Home() {
               </article>
             )}
 
-            {wizardStep === 8 && (
+            {wizardStep === resultNameStep && (
               <label className="field single-field">
                 <span>측정 결과 이름</span>
                 <input value={responseName} onChange={(event) => setResponseName(event.target.value)} placeholder="예: 수율, 휘도, 점도, 용량" />
               </label>
             )}
 
-            {wizardStep === 9 && (
+            {wizardStep === goalStep && (
               <div className="choice-panel" role="radiogroup" aria-label="목표 선택">
                 <button className={projectGoal === "maximize" ? "choice-card active" : "choice-card"} type="button" onClick={() => setProjectGoal("maximize")}>
                   <strong>크게 만들기</strong>
@@ -2584,14 +2633,14 @@ export default function Home() {
               </div>
             )}
 
-            {wizardStep === 10 && (
+            {wizardStep === projectNameStep && (
               <label className="field single-field">
                 <span>프로젝트명</span>
                 <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="예: 온도-농도 최적화 실험" required />
               </label>
             )}
 
-            {wizardStep === 11 && (
+            {wizardStep === summaryStep && (
               <div className="wizard-summary-grid">
                 <section className="wizard-summary-panel">
                   <span>선택한 조건</span>
@@ -2617,8 +2666,8 @@ export default function Home() {
                     <span className="label-with-help">중간값 확인 실험 3회 추가<HelpTip label="중간값 확인 실험 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
                   </label>
                   <div className="wizard-summary-item">
-                    <strong>{includeCenterPoints && hasContinuousFactor ? "11회 실험" : "8회 실험"}</strong>
-                    <small>{includeCenterPoints && hasContinuousFactor ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
+                    <strong>{expectedRunCount}회 실험</strong>
+                    <small>{includeCenterRuns ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
                   </div>
                 </section>
               </div>
@@ -2633,18 +2682,18 @@ export default function Home() {
           <button className="secondary-button" type="button" onClick={() => goToWizardStep(wizardStep - 1)} disabled={wizardStep === 0 || isBusy}>이전</button>
           {conditionStepIndex !== null && (
             <button className="tour-target" type="button" onClick={() => proceedFromConditionDetail(conditionStepIndex)}>
-              {conditionStepIndex === 3 ? "조건 값 입력하기" : "다음 조건"}
+              {conditionStepIndex === factorCount - 1 ? "조건 값 입력하기" : "다음 조건"}
             </button>
           )}
           {valueStepIndex !== null && (
             <button className="tour-target" type="button" onClick={() => proceedFromConditionValue(valueStepIndex)}>
-              {valueStepIndex === 3 ? "측정 결과 정하기" : "다음 조건 값"}
+              {valueStepIndex === factorCount - 1 ? "측정 결과 정하기" : "다음 조건 값"}
             </button>
           )}
-          {wizardStep === 8 && <button className="tour-target" type="button" onClick={proceedFromResultSettings}>목표 정하기</button>}
-          {wizardStep === 9 && <button className="tour-target" type="button" onClick={proceedFromGoalSettings}>프로젝트명 정하기</button>}
-          {wizardStep === 10 && <button className="tour-target" type="button" onClick={proceedFromProjectName}>요약 확인하기</button>}
-          {wizardStep === 11 && <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "실험표를 만드는 중..." : "실험표 생성하기"}</button>}
+          {wizardStep === resultNameStep && <button className="tour-target" type="button" onClick={proceedFromResultSettings}>목표 정하기</button>}
+          {wizardStep === goalStep && <button className="tour-target" type="button" onClick={proceedFromGoalSettings}>프로젝트명 정하기</button>}
+          {wizardStep === projectNameStep && <button className="tour-target" type="button" onClick={proceedFromProjectName}>요약 확인하기</button>}
+          {wizardStep === summaryStep && <button className="tour-target" type="submit" disabled={isBusy}><Play size={16} />{isBusy ? "실험표를 만드는 중..." : "실험표 생성하기"}</button>}
         </div>
       </form>
       )}
@@ -2761,7 +2810,7 @@ export default function Home() {
             <tbody>
               {designRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>실험표를 생성하면 실험 조합이 표시됩니다.</td>
+                  <td colSpan={factorKeys.length + 1}>실험표를 생성하면 실험 조합이 표시됩니다.</td>
                 </tr>
               ) : (
                 designRuns.map((run) => {
@@ -2775,7 +2824,7 @@ export default function Home() {
                         </span>
                       </td>
                       {factors.map((factor) => {
-                        const factorKey = "ABCD"[factor.idx - 1];
+                        const factorKey = FACTOR_KEYS[factor.idx - 1];
                         const value = formatFactorValue(run, factorKey);
                         const isCenterUnavailable =
                           isCenterRun && factor.factor_type === "categorical" && !value.trim();

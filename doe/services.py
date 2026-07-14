@@ -5,7 +5,7 @@ from itertools import combinations, product
 from .models import DesignRun, Factor, Result, ResultHistory
 
 
-BASE_LEVELS = [
+THREE_FACTOR_FRACTIONAL_LEVELS = [
     (-1, -1, -1),
     (-1, -1, 1),
     (-1, 1, -1),
@@ -15,6 +15,18 @@ BASE_LEVELS = [
     (1, 1, -1),
     (1, 1, 1),
 ]
+
+
+def base_levels_for_factors(factors):
+    if len(factors) == 4:
+        return [
+            {factors[0].key: a, factors[1].key: b, factors[2].key: c, factors[3].key: a * b * c}
+            for a, b, c in THREE_FACTOR_FRACTIONAL_LEVELS
+        ]
+    return [
+        {factor.key: level for factor, level in zip(factors, levels)}
+        for levels in product([-1, 1], repeat=len(factors))
+    ]
 
 
 def validate_design_factors(factors):
@@ -45,8 +57,7 @@ def create_fractional_factorial_design(
     runs = []
 
     run_order = 1
-    for a, b, c in BASE_LEVELS:
-        base = {"A": a, "B": b, "C": c, "D": a * b * c}
+    for base in base_levels_for_factors(factors):
         levels = {}
         values = {}
 
