@@ -1309,6 +1309,12 @@ export default function Home() {
   }, [initializeAuth]);
 
   useEffect(() => {
+    if (currentUser && !isIntroComplete && !project && !isSetupStarted && projectList.length > 0 && introStep === 0) {
+      setIntroStep(1);
+    }
+  }, [currentUser, introStep, isIntroComplete, isSetupStarted, project, projectList.length]);
+
+  useEffect(() => {
     if (!hasContinuousFactor && includeCenterPoints) {
       setIncludeCenterPoints(false);
     }
@@ -2316,9 +2322,14 @@ export default function Home() {
                   “수율을 높이고 싶어요”처럼 원하는 결과를 한 문장으로 적습니다.
                 </p>
                 <form
+                  id="intent-start-form"
                   className="intent-composer compact-intent-composer"
                   onSubmit={(event) => {
                     event.preventDefault();
+                    if (projectList.length > 0) {
+                      startNewExperiment();
+                      return;
+                    }
                     setIntroStep(2);
                   }}
                 >
@@ -2342,19 +2353,28 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
+                    <small className="optional-goal-note">목표는 비워두고 시작할 수도 있어요.</small>
                   </label>
                 </form>
                 <div className="intro-actions">
-                  <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>
-                    이전
-                  </button>
+                  {projectList.length === 0 && (
+                    <button className="secondary-button" type="button" onClick={() => setIntroStep(0)}>
+                      이전
+                    </button>
+                  )}
                   <button
                     className="welcome-start-button"
-                    type="button"
-                    onClick={() => setIntroStep(2)}
+                    type={projectList.length > 0 ? "submit" : "button"}
+                    form={projectList.length > 0 ? "intent-start-form" : undefined}
+                    onClick={projectList.length > 0 ? undefined : () => setIntroStep(2)}
                   >
-                    다음 안내 보기
+                    {projectList.length > 0 ? "내 실험 최적화 시작하기" : "다음 안내 보기"}
                   </button>
+                  {projectList.length > 0 && (
+                    <button className="secondary-button" type="button" onClick={() => setIntroStep(2)}>
+                      안내 더 보기
+                    </button>
+                  )}
                 </div>
               </div>
             )}
