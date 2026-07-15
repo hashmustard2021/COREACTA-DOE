@@ -682,12 +682,6 @@ function formatEffect(effect: number | null) {
   return Number(effect).toFixed(2);
 }
 
-function formatImpact(effect: Effect) {
-  const value = effect.effect_abs ?? (effect.effect === null ? null : Math.abs(Number(effect.effect)));
-  if (value === null) return "-";
-  return Number(value).toFixed(2);
-}
-
 function effectDirectionLabel(effect: number) {
   if (effect > 0) return "HIGH가 유리";
   if (effect < 0) return "LOW가 유리";
@@ -3084,9 +3078,9 @@ export default function Home() {
                     <span>#{index + 1}</span>
                     <strong>{effect.display_name}</strong>
                     <div>
-                      <b>영향도 {formatImpact(effect)}</b>
+                      <b>영향도 {formatEffect(effect.effect)}</b>
                       <em>{effect.direction_label || `${effect.direction} 유리`}</em>
-                      <small>방향 포함 효과: {formatEffect(effect.effect)}</small>
+                      <small>음수이면 낮은 조건이 더 유리합니다.</small>
                     </div>
                   </article>
                 ))}
