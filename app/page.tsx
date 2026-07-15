@@ -2445,9 +2445,9 @@ export default function Home() {
               </div>
             )}
 
-            {introStep === 4 && projectList.length > 0 && (
+            {(introStep === 1 || introStep === 4) && projectList.length > 0 && (
               <div className="recent-projects">
-                <span>최근 프로젝트 열기</span>
+                <span>저장한 실험 열기</span>
                 {projectList.slice(0, 3).map((item) => (
                   <button
                     className="recent-project-button"
