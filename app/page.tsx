@@ -1090,6 +1090,7 @@ export default function Home() {
   const [factors, setFactors] = useState<FactorInput[]>(defaultFactors);
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   const [introStep, setIntroStep] = useState(0);
+  const [hasAutoOpenedGoalEntry, setHasAutoOpenedGoalEntry] = useState(false);
   const [isSetupStarted, setIsSetupStarted] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
   const [includeCenterPoints, setIncludeCenterPoints] = useState(false);
@@ -1360,10 +1361,27 @@ export default function Home() {
   }, [initializeAuth]);
 
   useEffect(() => {
-    if (currentUser && !isIntroComplete && !project && !isSetupStarted && projectList.length > 0 && introStep === 0) {
+    if (
+      currentUser &&
+      !hasAutoOpenedGoalEntry &&
+      !isIntroComplete &&
+      !project &&
+      !isSetupStarted &&
+      projectList.length > 0 &&
+      introStep === 0
+    ) {
+      setHasAutoOpenedGoalEntry(true);
       setIntroStep(1);
     }
-  }, [currentUser, introStep, isIntroComplete, isSetupStarted, project, projectList.length]);
+  }, [
+    currentUser,
+    hasAutoOpenedGoalEntry,
+    introStep,
+    isIntroComplete,
+    isSetupStarted,
+    project,
+    projectList.length,
+  ]);
 
   useEffect(() => {
     if (!hasContinuousFactor && includeCenterPoints) {
@@ -1430,6 +1448,7 @@ export default function Home() {
       setManualEnglishNameEdits({});
       setFactorErrors({});
       setIsIntroComplete(false);
+      setHasAutoOpenedGoalEntry(false);
       setIsSetupStarted(false);
       setDesignRuns([]);
       setYields({});
@@ -1838,6 +1857,7 @@ export default function Home() {
     setFactorErrors({});
     setIsIntroComplete(false);
     setIntroStep(0);
+    setHasAutoOpenedGoalEntry(false);
     setIsSetupStarted(false);
     setWizardStep(0);
     setDesignRuns([]);
