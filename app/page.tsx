@@ -1374,7 +1374,7 @@ export default function Home() {
   useEffect(() => {
     if (surfaceFactorOptions.length === 0) {
       setSurfaceData(null);
-      setSurfaceMessage("Contour plot requires at least two continuous factors.");
+      setSurfaceMessage("등고선 그래프(Contour plot)는 숫자 범위형 조건이 2개 이상 필요합니다.");
       return;
     }
 
@@ -2184,20 +2184,20 @@ export default function Home() {
 
     if (surfaceFactorOptions.length < 2) {
       setSurfaceData(null);
-      setSurfaceMessage("Contour plot requires at least two continuous factors.");
+      setSurfaceMessage("등고선 그래프(Contour plot)는 숫자 범위형 조건이 2개 이상 필요합니다.");
       return;
     }
 
     if (surfaceXFactor === surfaceYFactor) {
       setSurfaceData(null);
-      setSurfaceMessage("서로 다른 X/Y factor를 선택해주세요.");
+      setSurfaceMessage("서로 다른 X/Y 조건(Factor)을 선택해주세요.");
       return;
     }
 
     setIsBusy(true);
     setErrorText("");
     setStatusText("");
-    setSurfaceMessage("Contour plot을 계산하는 중입니다.");
+    setSurfaceMessage("등고선 그래프(Contour plot)를 계산하는 중입니다.");
 
     try {
       const params = new URLSearchParams({
@@ -2208,7 +2208,7 @@ export default function Home() {
         await apiRequest<SurfaceData>(`/api/projects/${project.id}/surface/?${params}`),
       );
       setSurfaceMessage("");
-      setStatusText("Contour plot updated.");
+      setStatusText("등고선 그래프(Contour plot)를 업데이트했어요.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load surface data.";
       setSurfaceData(null);
@@ -3179,37 +3179,37 @@ export default function Home() {
 
             <div className="stats-card">
               <h3 className="heading-with-help">
-                Curvature
-                <HelpTip label="Curvature 설명">
-                  조건을 조금씩 바꿀 때 결과가 직선처럼 변하는지, 어느 지점부터 꺾이거나 휘어지는지 보는 신호입니다. Center point 결과가 있으면 더 잘 판단할 수 있습니다.
+                휘어짐 확인 (Curvature)
+                <HelpTip label="휘어짐 확인 (Curvature) 설명">
+                  조건을 조금씩 바꿀 때 결과가 직선처럼 변하는지, 어느 지점부터 꺾이거나 휘어지는지 보는 신호입니다. 중간값 실험(Center point) 결과가 있으면 더 잘 판단할 수 있습니다.
                 </HelpTip>
               </h3>
               <p>{report.curvature.message}</p>
               {report.curvature.available && (
                 <div className="stats-grid">
-                  <span>Factorial mean: {report.curvature.factorial_mean?.toFixed(2)}%</span>
-                  <span>Center mean: {report.curvature.center_mean?.toFixed(2)}%</span>
-                  <span>Curvature effect: {report.curvature.effect?.toFixed(2)}</span>
-                  <span>{report.curvature.has_curvature ? "Curvature 가능성 있음" : "뚜렷한 curvature 없음"}</span>
+                  <span>기본 실험 평균 (Factorial mean): {report.curvature.factorial_mean?.toFixed(2)}%</span>
+                  <span>중간값 평균 (Center mean): {report.curvature.center_mean?.toFixed(2)}%</span>
+                  <span>휘어짐 효과 (Curvature effect): {report.curvature.effect?.toFixed(2)}</span>
+                  <span>{report.curvature.has_curvature ? "휘어짐 가능성 있음" : "뚜렷한 휘어짐 없음"}</span>
                 </div>
               )}
             </div>
 
             <div className="anova-card">
               <h3 className="heading-with-help">
-                ANOVA
-                <HelpTip label="ANOVA 설명">
-                  각 조건이 결과 차이에 얼마나 의미 있게 기여했는지 보는 간단한 통계 요약입니다. p-value가 작을수록 우연보다는 실제 영향일 가능성이 높다고 해석합니다.
+                분산 분석 (ANOVA)
+                <HelpTip label="분산 분석 (ANOVA) 설명">
+                  각 조건이 결과 차이에 얼마나 의미 있게 기여했는지 보는 간단한 통계 요약입니다. 유의확률(p-value)이 작을수록 우연보다는 실제 영향일 가능성이 높다고 해석합니다.
                 </HelpTip>
               </h3>
               <div className="table-scroll">
                 <table>
                   <thead>
                     <tr>
-                      <th>Factor</th>
-                      <th className="numeric-column">Effect</th>
-                      <th className="numeric-column">p-value</th>
-                      <th>Significance</th>
+                      <th>조건 (Factor)</th>
+                      <th className="numeric-column">영향도 (Effect)</th>
+                      <th className="numeric-column">유의확률 (p-value)</th>
+                      <th>판정 (Significance)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3220,7 +3220,7 @@ export default function Home() {
                         <td className="numeric-cell">
                           {row.p_value === null ? "-" : row.p_value.toFixed(4)}
                         </td>
-                        <td>{row.significant ? "Significant" : "Not significant"}</td>
+                        <td>{row.significant ? "유의함 (Significant)" : "뚜렷하지 않음 (Not significant)"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3258,7 +3258,7 @@ export default function Home() {
                       <div className="condition-grid">
                         {Object.entries(recommendation.conditions).map(([key, condition]) => (
                           <span key={key}>
-                            <b>{key}</b>
+                            <b>{condition.display_name || key}</b>
                             <em>{condition.direction_label || condition.direction}</em>
                             <strong>{formatConditionValue(condition)}</strong>
                           </span>
@@ -3307,7 +3307,7 @@ export default function Home() {
                     />
                     <Tooltip
                       cursor={{ fill: "rgba(15, 118, 110, 0.07)" }}
-                      formatter={(value) => [Number(value).toFixed(2), "Effect"]}
+                      formatter={(value) => [Number(value).toFixed(2), "영향도 (Effect)"]}
                       labelFormatter={(label) => {
                         const item = mainEffectData.find((effect) => effect.key === label);
                         return item ? item.name : label;
@@ -3369,7 +3369,7 @@ export default function Home() {
                   />
                   <Tooltip
                     cursor={{ fill: "rgba(15, 118, 110, 0.07)" }}
-                    formatter={(value) => [Number(value).toFixed(2), "|Effect|"]}
+                    formatter={(value) => [Number(value).toFixed(2), "절대 영향도 (|Effect|)"]}
                     labelFormatter={(label) => {
                       const item = paretoData.find((effect) => effect.key === label);
                       return item ? item.name : label;
