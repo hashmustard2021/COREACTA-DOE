@@ -974,6 +974,56 @@ function formatConditionValue(condition: Recommendation["conditions"][string]) {
   return condition.unit ? `${displayValue} ${condition.unit}` : displayValue;
 }
 
+function recommendationTitle(
+  recommendation: Recommendation,
+  previousRecommendation?: Recommendation,
+) {
+  if (recommendation.rank === 1) {
+    return "최고 예측 조건";
+  }
+
+  const changedConditions = changedRecommendationConditions(recommendation, previousRecommendation);
+  if (changedConditions.length > 0) {
+    return `${changedConditions.join(", ")} 조건을 바꾼 대안`;
+  }
+
+  return recommendation.strategy || "추가로 확인할 조건";
+}
+
+function recommendationReason(
+  recommendation: Recommendation,
+  previousRecommendation?: Recommendation,
+) {
+  if (recommendation.rank === 1) {
+    return "현재 모델에서 가장 높은 결과가 예상돼요.";
+  }
+
+  const changedConditions = changedRecommendationConditions(recommendation, previousRecommendation);
+  if (changedConditions.length > 0) {
+    return `${changedConditions.join(", ")}를 다르게 두고 결과가 비슷한지 확인할 수 있어요.`;
+  }
+
+  return "앞선 추천과 가까운 조건으로 재현성을 확인할 수 있어요.";
+}
+
+function changedRecommendationConditions(
+  recommendation: Recommendation,
+  previousRecommendation?: Recommendation,
+) {
+  if (!previousRecommendation) return [];
+
+  return Object.entries(recommendation.conditions)
+    .filter(([key, condition]) => {
+      const previousCondition = previousRecommendation.conditions[key];
+      return (
+        !previousCondition ||
+        String(previousCondition.value) !== String(condition.value) ||
+        previousCondition.direction !== condition.direction
+      );
+    })
+    .map(([, condition]) => condition.display_name);
+}
+
 function HelpTip({ label, children }: { label: string; children: string }) {
   return (
     <span className="help-popover term-help">
@@ -1070,6 +1120,7 @@ export default function Home() {
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const designTableSectionRef = useRef<HTMLElement | null>(null);
   const resultsInputSectionRef = useRef<HTMLElement | null>(null);
+  const firstRecommendationRef = useRef<HTMLElement | null>(null);
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const factorCount = factors.length;
@@ -1144,9 +1195,7 @@ export default function Home() {
       summary: topDriver
         ? `현재 데이터에서는 ${topDriver.display_name} 조건이 결과에 가장 큰 영향을 주고 있어요.`
         : "현재 데이터로 중요한 조건을 확인하고 있어요.",
-      nextStep: firstRecommendation
-        ? `다음 실험에서는 ${firstRecommendation.strategy} 조건을 먼저 확인해 보세요.`
-        : "결과를 더 입력하면 다음 실험 조건을 추천할 수 있어요.",
+      hasRecommendation: Boolean(firstRecommendation),
     };
   }, [report]);
   const surfaceScale = useMemo(() => {
@@ -1199,6 +1248,14 @@ export default function Home() {
       block: "start",
     });
     resultsInputSectionRef.current?.focus({ preventScroll: true });
+  }
+
+  function focusFirstRecommendation() {
+    firstRecommendationRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    firstRecommendationRef.current?.focus({ preventScroll: true });
   }
 
   const tourSteps = project
@@ -3066,7 +3123,19 @@ export default function Home() {
             <section className="report-summary">
               <span>결론 요약</span>
               <h3>{reportConclusion.summary}</h3>
-              <p>{reportConclusion.nextStep}</p>
+              <p>
+                {reportConclusion.hasRecommendation ? (
+                  <>
+                    다음 실험에서는 예상 결과가 가장 높은{" "}
+                    <button className="inline-focus-link" type="button" onClick={focusFirstRecommendation}>
+                      #1
+                    </button>
+                    {" "}조건을 먼저 확인해 보세요.
+                  </>
+                ) : (
+                  "결과를 더 입력하면 다음 실험 조건을 추천할 수 있어요."
+                )}
+              </p>
             </section>
           )}
           <div className="report-layout">
@@ -3164,29 +3233,40 @@ export default function Home() {
               {report.recommendations.length === 0 ? (
                 <p className="empty-state">결과를 더 입력하면 다음 실험 조건을 추천할 수 있어요.</p>
               ) : (
-                report.recommendations.map((recommendation) => (
-                  <article className="recommendation" key={recommendation.rank}>
-                    <div className="recommendation-title">
-                      <span>#{recommendation.rank}</span>
-                      <strong>{recommendation.strategy}</strong>
-                    </div>
-                    {recommendation.predicted_yield !== undefined &&
-                      recommendation.predicted_yield !== null && (
-                        <p className="prediction">
-                          예상 결과: {Number(recommendation.predicted_yield).toFixed(1)}%
-                        </p>
-                      )}
-                    <div className="condition-grid">
-                      {Object.entries(recommendation.conditions).map(([key, condition]) => (
-                        <span key={key}>
-                          <b>{key}</b>
-                          <em>{condition.direction_label || condition.direction}</em>
-                          <strong>{formatConditionValue(condition)}</strong>
-                        </span>
-                      ))}
-                    </div>
-                  </article>
-                ))
+                report.recommendations.map((recommendation, index) => {
+                  const previousRecommendation = report.recommendations[index - 1];
+                  return (
+                    <article
+                      className="recommendation"
+                      key={recommendation.rank}
+                      ref={recommendation.rank === 1 ? firstRecommendationRef : undefined}
+                      tabIndex={recommendation.rank === 1 ? -1 : undefined}
+                    >
+                      <div className="recommendation-title">
+                        <span>#{recommendation.rank}</span>
+                        <strong>{recommendationTitle(recommendation, previousRecommendation)}</strong>
+                      </div>
+                      <p className="recommendation-reason">
+                        {recommendationReason(recommendation, previousRecommendation)}
+                      </p>
+                      {recommendation.predicted_yield !== undefined &&
+                        recommendation.predicted_yield !== null && (
+                          <p className="prediction">
+                            예상 결과: {Number(recommendation.predicted_yield).toFixed(1)}%
+                          </p>
+                        )}
+                      <div className="condition-grid">
+                        {Object.entries(recommendation.conditions).map(([key, condition]) => (
+                          <span key={key}>
+                            <b>{key}</b>
+                            <em>{condition.direction_label || condition.direction}</em>
+                            <strong>{formatConditionValue(condition)}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           </div>
