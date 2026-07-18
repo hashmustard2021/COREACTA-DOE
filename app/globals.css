@@ -971,6 +971,10 @@ select:focus {
   padding: 24px;
 }
 
+.summary-wizard-card {
+  max-width: 1240px;
+}
+
 .wizard-flow-progress {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1047,6 +1051,10 @@ select:focus {
   align-items: start;
 }
 
+.summary-wizard-card .wizard-step-shell {
+  grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
+}
+
 .wizard-step-copy {
   display: grid;
   gap: 12px;
@@ -1077,6 +1085,37 @@ select:focus {
   color: var(--muted);
   font-size: 15px;
   line-height: 1.75;
+}
+
+.wizard-side-checklist {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.wizard-side-checklist span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.wizard-side-checklist span.active {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.wizard-side-checklist span.complete b {
+  color: var(--accent-strong);
 }
 
 .single-input-panel {
@@ -1342,6 +1381,93 @@ select:focus {
 
 .workspace-section {
   margin-bottom: 20px;
+}
+
+.workspace-triad {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.45fr) minmax(0, 1fr) minmax(240px, 0.5fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.workspace-main-flow {
+  min-width: 0;
+}
+
+.workspace-guide-panel,
+.workspace-summary-panel {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.workspace-guide-panel > span,
+.workspace-summary-panel > span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.workspace-guide-panel h2,
+.workspace-summary-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.workspace-guide-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.workspace-guide-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.workspace-guide-list span,
+.workspace-summary-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px 12px;
+}
+
+.workspace-guide-list span.active {
+  border-color: rgba(15, 118, 110, 0.38);
+  background: var(--accent-soft);
+}
+
+.workspace-guide-list span.complete {
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.workspace-guide-list strong,
+.workspace-summary-item strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.workspace-guide-list small,
+.workspace-summary-item small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .workspace-section .card-heading,
@@ -1787,8 +1913,13 @@ select:focus {
 .wizard-summary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 18px;
+}
+
+.summary-wizard-card .wizard-summary-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  margin-bottom: 0;
 }
 
 .wizard-summary-panel {
@@ -1799,6 +1930,11 @@ select:focus {
   border-radius: 8px;
   background: #f8fafb;
   padding: 14px;
+}
+
+.summary-wizard-card .wizard-summary-panel {
+  align-content: start;
+  background: #ffffff;
 }
 
 .wizard-summary-panel > span {
@@ -1831,6 +1967,29 @@ select:focus {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wizard-summary-highlight {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(231, 244, 241, 0.92), #ffffff);
+  padding: 16px;
+}
+
+.wizard-summary-highlight small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wizard-summary-highlight strong {
+  color: var(--accent-strong);
+  font-size: 34px;
+  line-height: 1;
 }
 
 .setup-submit-row {
@@ -2495,6 +2654,15 @@ tbody tr:last-child td {
 
   .workspace-progress {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-triad {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-guide-panel,
+  .workspace-summary-panel {
+    position: static;
   }
 
   .factor-grid {

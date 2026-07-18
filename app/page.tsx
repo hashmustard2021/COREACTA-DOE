@@ -2540,7 +2540,15 @@ export default function Home() {
       )}
 
       {isIntroComplete && !project && (
-      <form className="card setup-card wizard-card guided-wizard-card" data-step={wizardStep} onSubmit={handleGenerateDesign}>
+      <form
+        className={
+          wizardStep === summaryStep
+            ? "card setup-card wizard-card guided-wizard-card summary-wizard-card"
+            : "card setup-card wizard-card guided-wizard-card"
+        }
+        data-step={wizardStep}
+        onSubmit={handleGenerateDesign}
+      >
         <div className="wizard-flow-progress" aria-label="실험 설정 진행 흐름">
           {["조건 선택", "값 입력", "결과 설정", "실험표 생성"].map((step, index) => (
             <span className={index === wizardPhaseIndex ? "active" : index < wizardPhaseIndex ? "complete" : ""} key={step}>
@@ -2575,6 +2583,14 @@ export default function Home() {
               {wizardStep === projectNameStep && "나중에 다시 찾기 쉬운 이름을 붙여주세요."}
               {wizardStep === summaryStep && "입력한 조건과 측정 결과를 확인한 뒤 실험표를 생성합니다."}
             </p>
+            {wizardStep === summaryStep && (
+              <div className="wizard-side-checklist" aria-label="실험표 생성 전 확인 순서">
+                <span className="complete">조건 선택 <b>완료</b></span>
+                <span className="complete">값 입력 <b>완료</b></span>
+                <span className="complete">결과 설정 <b>완료</b></span>
+                <span className="active">실험표 생성 <b>현재</b></span>
+              </div>
+            )}
           </div>
 
           <div className="single-input-panel">
@@ -2762,7 +2778,7 @@ export default function Home() {
             {wizardStep === summaryStep && (
               <div className="wizard-summary-grid">
                 <section className="wizard-summary-panel">
-                  <span>선택한 조건</span>
+                  <span>실험 인자 설정</span>
                   {factors.map((factor) => (
                     <div className="wizard-summary-item" key={factor.idx}>
                       <strong>{factor.name_kr} / {factor.name_en}</strong>
@@ -2775,7 +2791,15 @@ export default function Home() {
                   ))}
                 </section>
                 <section className="wizard-summary-panel">
-                  <span>측정 결과</span>
+                  <span>설계 조건 요약</span>
+                  <div className="wizard-summary-highlight">
+                    <small>예상 실험 횟수</small>
+                    <strong>{expectedRunCount}</strong>
+                  </div>
+                  <div className="wizard-summary-item">
+                    <strong>기본 실험표 8회</strong>
+                    <small>조건 조합을 줄여서 먼저 확인합니다.</small>
+                  </div>
                   <div className="wizard-summary-item">
                     <strong>{responseName || "Result"}</strong>
                     <small>{projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</small>
@@ -2785,7 +2809,7 @@ export default function Home() {
                     <span className="label-with-help">중간값 확인 실험 3회 추가<HelpTip label="중간값 확인 실험 설명">모든 숫자 범위형 조건을 중간값으로 맞춘 확인 실험입니다. 결과가 단순한 직선 경향인지 휘어진 경향인지 확인합니다.</HelpTip></span>
                   </label>
                   <div className="wizard-summary-item">
-                    <strong>{expectedRunCount}회 실험</strong>
+                    <strong>생성 후 이동</strong>
                     <small>{includeCenterRuns ? "중간값 확인 실험 포함" : "기본 실험표"}</small>
                   </div>
                 </section>
@@ -2894,6 +2918,39 @@ export default function Home() {
         )}
       </section>
 
+      <div className="workspace-triad">
+        <aside className="workspace-guide-panel" aria-label="Workspace 다음 행동">
+          <span>{workspaceStep + 1} / {workspaceSteps.length}</span>
+          <h2>
+            {workspaceStep === 0 && "먼저 실험표를 확인하세요"}
+            {workspaceStep === 1 && "결과를 입력하고 저장하세요"}
+            {workspaceStep === 2 && "분석 결과를 확인하세요"}
+          </h2>
+          <p>
+            {workspaceStep === 0 && "표시된 Run 순서대로 실험을 수행한 뒤 측정 결과 입력으로 이동하세요."}
+            {workspaceStep === 1 && "각 실험에서 얻은 값을 입력하고 결과 저장을 눌러 분석 준비를 마치세요."}
+            {workspaceStep === 2 && "결론 요약을 먼저 보고, 중요한 조건과 다음 실험 추천을 확인하세요."}
+          </p>
+          <div className="workspace-guide-list">
+            {workspaceSteps.map((step, index) => (
+              <span
+                className={
+                  index === workspaceStep
+                    ? "active"
+                    : index < workspaceStep
+                      ? "complete"
+                      : ""
+                }
+                key={step.label}
+              >
+                <strong>{step.label}</strong>
+                <small>{step.detail}</small>
+              </span>
+            ))}
+          </div>
+        </aside>
+
+        <div className="workspace-main-flow">
       <section className="card workspace-section" ref={designTableSectionRef} tabIndex={-1}>
         <div className="card-heading">
           <div>
@@ -3555,6 +3612,29 @@ export default function Home() {
         </article>
         </div>
       </section>
+        </div>
+
+        <aside className="workspace-summary-panel" aria-label="현재 프로젝트 요약">
+          <span>현재 실험 요약</span>
+          <h2>{expectedRunCount}회 실험</h2>
+          <div className="workspace-summary-item">
+            <strong>측정 결과</strong>
+            <small>{responseName || "Result"} · {projectGoal === "maximize" ? "크게 만들기" : "작게 만들기"}</small>
+          </div>
+          <div className="workspace-summary-item">
+            <strong>조건</strong>
+            <small>{factorCount}개 조건 · {factors.filter((factor) => factor.factor_type === "categorical").length}개 선택형</small>
+          </div>
+          <div className="workspace-summary-item">
+            <strong>결과 입력</strong>
+            <small>{completedResultCount}/{designRuns.length || project?.run_budget || 0}개 입력됨</small>
+          </div>
+          <div className="workspace-summary-item">
+            <strong>다음 확인</strong>
+            <small>{report ? "추천 조건과 차트를 검토하세요." : "결과 저장 후 분석 결과를 확인하세요."}</small>
+          </div>
+        </aside>
+      </div>
       </>
       )}
         </>
