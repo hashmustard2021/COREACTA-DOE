@@ -206,7 +206,7 @@ def calculate_curvature(project):
             "factorial_mean": None,
             "center_mean": None,
             "effect": None,
-            "message": "Center point 결과가 없어 curvature를 평가할 수 없습니다.",
+            "message": "중간값 실험(Center point) 결과가 없어 휘어짐(Curvature)을 평가할 수 없습니다.",
         }
 
     factorial_mean = mean(factorial_values)
@@ -222,9 +222,9 @@ def calculate_curvature(project):
         "center_mean": round(float(center_mean), 4),
         "effect": round(float(effect), 4),
         "message": (
-            "Center point 평균이 factorial 평균과 차이를 보여 curvature 가능성이 있습니다."
+            "중간값 실험(Center point) 평균이 기본 실험 평균과 차이를 보여 휘어짐(Curvature) 가능성이 있습니다."
             if has_curvature
-            else "현재 center point 기준으로 뚜렷한 curvature는 보이지 않습니다."
+            else "현재 중간값 실험(Center point) 기준으로 뚜렷한 휘어짐(Curvature)은 보이지 않습니다."
         ),
     }
 
@@ -424,8 +424,8 @@ def factor_direction_value(factor, direction):
 def build_interpretation(effects, top_drivers, recommendations, has_enough_data):
     if not has_enough_data:
         return [
-            "현재 데이터는 main effect를 안정적으로 해석하기에 아직 부족합니다.",
-            "후속 실험에서는 각 factor의 LOW/HIGH 결과가 모두 확보되도록 결과 입력을 먼저 완료하는 것이 좋습니다.",
+            "현재 데이터는 조건별 영향(Main effect)을 안정적으로 해석하기에 아직 부족합니다.",
+            "후속 실험에서는 각 조건(Factor)의 낮은 값(LOW)과 높은 값(HIGH) 결과가 모두 확보되도록 결과 입력을 먼저 완료하는 것이 좋습니다.",
             "추가 검증이 필요합니다.",
         ]
 
@@ -451,23 +451,19 @@ def build_interpretation(effects, top_drivers, recommendations, has_enough_data)
         smallest = min(small_effects, key=lambda item: item["effect_abs"])
         notes.append(
             f"{smallest['display_name']}의 영향은 상대적으로 작게 나타났으므로, "
-            "우선순위는 높은 driver 검증에 두는 것이 합리적입니다."
+            "우선순위는 영향이 큰 조건(driver) 검증에 두는 것이 합리적입니다."
         )
 
     if recommendations:
         first_recommendation = recommendations[0]
-        conditions = summarize_conditions(first_recommendation["conditions"])
+        condition_lines = summarize_condition_lines(first_recommendation["conditions"])
         predicted_yield = first_recommendation.get("predicted_yield")
-        yield_text = (
-            f" 예측 수율은 약 {predicted_yield:.1f}%입니다."
-            if predicted_yield is not None
-            else ""
-        )
-        notes.append(
-            f"후속 실험에서는 {conditions} 조건을 우선 검토할 수 있습니다.{yield_text}"
-        )
+        notes.append("후속 실험에서는 아래 조건을 우선 검토할 수 있습니다.")
+        notes.extend(condition_lines)
+        if predicted_yield is not None:
+            notes.append(f"예측 결과는 약 {predicted_yield:.1f}%입니다.")
 
-    notes.append("이 해석은 현재 입력된 DOE 결과를 기반으로 한 rule-based 요약이며, 추가 검증이 필요합니다.")
+    notes.append("이 해석은 현재 입력된 실험 설계(DOE) 결과를 바탕으로 규칙 기반(rule-based)으로 정리한 요약이며, 추가 검증이 필요합니다.")
     return notes
 
 
@@ -479,7 +475,7 @@ def direction_label_kr(direction):
     return "중간 또는 추가 확인"
 
 
-def summarize_conditions(conditions):
+def summarize_condition_lines(conditions):
     parts = []
     for condition in conditions.values():
         value = condition["value"]
@@ -487,9 +483,9 @@ def summarize_conditions(conditions):
         unit_suffix = f" {unit}" if unit else ""
         direction_text = condition.get("direction_label") or condition["direction"]
         parts.append(
-            f"{condition['display_name']} {direction_text}({value}{unit_suffix})"
+            f"{condition['display_name']}: {direction_text} · {value}{unit_suffix}"
         )
-    return ", ".join(parts)
+    return parts
 
 
 def recommend_next_runs(factors, top_drivers, project=None):
