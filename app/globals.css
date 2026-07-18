@@ -2205,6 +2205,14 @@ tbody tr:last-child td {
   line-height: 1.55;
 }
 
+.advisor-card .interpretation-child {
+  margin-left: 10px;
+  border-left: 2px solid rgba(15, 118, 110, 0.18);
+  color: var(--muted);
+  list-style: none;
+  padding-left: 12px;
+}
+
 .stats-card,
 .anova-card {
   grid-column: 1 / -1;

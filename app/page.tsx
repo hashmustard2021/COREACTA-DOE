@@ -3190,9 +3190,14 @@ export default function Home() {
                 <p className="empty-state">해석을 생성할 데이터가 충분하지 않습니다.</p>
               ) : (
                 <ul>
-                  {report.interpretation.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
+                  {report.interpretation.map((item) => {
+                    const isConditionItem = item.includes(":") && item.includes("·");
+                    return (
+                      <li className={isConditionItem ? "interpretation-child" : undefined} key={item}>
+                        {item}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
