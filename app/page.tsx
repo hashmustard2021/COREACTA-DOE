@@ -43,6 +43,7 @@ const API_BASE_URL =
     : process.env.NODE_ENV === "production"
       ? ""
       : "http://localhost:8000";
+const LAST_WORKSPACE_PROJECT_KEY = "coreacta:lastWorkspaceProjectId";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -71,6 +72,24 @@ function getWizardPhaseIndex(step: number, factorCount: number) {
 function expectedDesignRunCount(factorCount: number, includesCenterPoints: boolean) {
   const baseRunCount = factorCount >= 4 ? 8 : 2 ** factorCount;
   return baseRunCount + (includesCenterPoints ? 3 : 0);
+}
+
+function rememberWorkspaceProject(projectId: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LAST_WORKSPACE_PROJECT_KEY, String(projectId));
+}
+
+function forgetWorkspaceProject() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(LAST_WORKSPACE_PROJECT_KEY);
+}
+
+function readRememberedWorkspaceProjectId() {
+  if (typeof window === "undefined") return null;
+  const value = window.localStorage.getItem(LAST_WORKSPACE_PROJECT_KEY);
+  if (!value) return null;
+  const projectId = Number(value);
+  return Number.isInteger(projectId) && projectId > 0 ? projectId : null;
 }
 
 const objectiveSuggestions = [
@@ -1112,6 +1131,8 @@ export default function Home() {
   const [resultHistory, setResultHistory] = useState<ResultHistoryRecord[]>([]);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const [expandedHistoryRuns, setExpandedHistoryRuns] = useState<Record<number, boolean>>({});
+  const [activeWorkspaceStep, setActiveWorkspaceStep] = useState(0);
+  const [hasTriedWorkspaceRestore, setHasTriedWorkspaceRestore] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [errorText, setErrorText] = useState("");
   const [factorErrors, setFactorErrors] = useState<FactorFieldErrors>({});
@@ -1131,6 +1152,7 @@ export default function Home() {
   const [surfaceYFactor, setSurfaceYFactor] = useState(factorDisplayName(defaultFactors[2]));
   const designTableSectionRef = useRef<HTMLElement | null>(null);
   const resultsInputSectionRef = useRef<HTMLElement | null>(null);
+  const reportSectionRef = useRef<HTMLElement | null>(null);
   const firstRecommendationRef = useRef<HTMLElement | null>(null);
   const yieldInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -1230,6 +1252,7 @@ export default function Home() {
     : completedResultCount > 0
       ? 1
       : 0;
+  const workspaceViewStep = project ? activeWorkspaceStep : workspaceStep;
   const workspaceSteps = [
     {
       label: "실험표 확인",
@@ -1268,6 +1291,46 @@ export default function Home() {
     });
     firstRecommendationRef.current?.focus({ preventScroll: true });
   }
+
+  useEffect(() => {
+    if (!project) {
+      setActiveWorkspaceStep(0);
+      return;
+    }
+
+    const sections = [
+      designTableSectionRef.current,
+      resultsInputSectionRef.current,
+      reportSectionRef.current,
+    ];
+
+    function updateActiveWorkspaceStep() {
+      const viewportAnchor = Math.max(120, window.innerHeight * 0.24);
+      let nextStep = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      sections.forEach((section, index) => {
+        if (!section) return;
+        const rect = section.getBoundingClientRect();
+        const distance = Math.abs(rect.top - viewportAnchor);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nextStep = index;
+        }
+      });
+
+      setActiveWorkspaceStep(nextStep);
+    }
+
+    updateActiveWorkspaceStep();
+    window.addEventListener("scroll", updateActiveWorkspaceStep, { passive: true });
+    window.addEventListener("resize", updateActiveWorkspaceStep);
+
+    return () => {
+      window.removeEventListener("scroll", updateActiveWorkspaceStep);
+      window.removeEventListener("resize", updateActiveWorkspaceStep);
+    };
+  }, [project, designRuns.length, completedResultCount, report]);
 
   const tourSteps = project
     ? [
@@ -1372,6 +1435,7 @@ export default function Home() {
   useEffect(() => {
     if (
       currentUser &&
+      hasTriedWorkspaceRestore &&
       !hasAutoOpenedGoalEntry &&
       !isIntroComplete &&
       !project &&
@@ -1385,6 +1449,7 @@ export default function Home() {
   }, [
     currentUser,
     hasAutoOpenedGoalEntry,
+    hasTriedWorkspaceRestore,
     introStep,
     isIntroComplete,
     isSetupStarted,
@@ -1446,6 +1511,7 @@ export default function Home() {
 
     try {
       await apiRequest<Record<string, never>>("/api/auth/logout/", { method: "POST" });
+      forgetWorkspaceProject();
       setCurrentUser(null);
       setProject(null);
       setProjectName("New experiment");
@@ -1784,6 +1850,7 @@ export default function Home() {
       );
 
       setProject(createdProject);
+      rememberWorkspaceProject(createdProject.id);
       setDesignRuns(design);
       setIsIntroComplete(true);
       setIsSetupStarted(true);
@@ -1858,6 +1925,7 @@ export default function Home() {
   }
 
   function resetProjectState() {
+    forgetWorkspaceProject();
     setProject(null);
     setProjectName("New experiment");
     setProjectSlogan("감이 아니라 근거로 실험하세요.");
@@ -2200,13 +2268,33 @@ export default function Home() {
           ? "예측 그래프 갱신를 눌러 contour plot을 생성하세요."
           : "결과를 입력한 뒤 예측 그래프 갱신를 눌러 contour plot을 생성하세요.",
       );
+      rememberWorkspaceProject(projectId);
       setStatusText("프로젝트를 열었어요.");
     } catch (error) {
+      if (readRememberedWorkspaceProjectId() === projectId) {
+        forgetWorkspaceProject();
+      }
       setErrorText(error instanceof Error ? error.message : "다시 시도하면 프로젝트를 열 수 있어요.");
     } finally {
       setIsBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthChecked || !currentUser || project || hasTriedWorkspaceRestore) {
+      return;
+    }
+
+    setHasTriedWorkspaceRestore(true);
+    const rememberedProjectId = readRememberedWorkspaceProjectId();
+    if (!rememberedProjectId) {
+      return;
+    }
+
+    void handleLoadProject(rememberedProjectId);
+    // handleLoadProject intentionally stays outside deps to avoid reopening on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, hasTriedWorkspaceRestore, isAuthChecked, project]);
 
   async function handleLoadSurface() {
     if (!project) {
@@ -2946,24 +3034,24 @@ export default function Home() {
 
       <div className="workspace-triad">
         <aside className="workspace-guide-panel" aria-label="Workspace 다음 행동">
-          <span>{workspaceStep + 1} / {workspaceSteps.length}</span>
+          <span>{workspaceViewStep + 1} / {workspaceSteps.length}</span>
           <h2>
-            {workspaceStep === 0 && "먼저 실험표를 확인하세요"}
-            {workspaceStep === 1 && "결과를 입력하고 저장하세요"}
-            {workspaceStep === 2 && "분석 결과를 확인하세요"}
+            {workspaceViewStep === 0 && "먼저 실험표를 확인하세요"}
+            {workspaceViewStep === 1 && "결과를 입력하고 저장하세요"}
+            {workspaceViewStep === 2 && "분석 결과를 확인하세요"}
           </h2>
           <p>
-            {workspaceStep === 0 && "표시된 Run 순서대로 실험을 수행한 뒤 측정 결과 입력으로 이동하세요."}
-            {workspaceStep === 1 && "각 실험에서 얻은 값을 입력하고 결과 저장을 눌러 분석 준비를 마치세요."}
-            {workspaceStep === 2 && "결론 요약을 먼저 보고, 중요한 조건과 다음 실험 추천을 확인하세요."}
+            {workspaceViewStep === 0 && "표시된 Run 순서대로 실험을 수행한 뒤 측정 결과 입력으로 이동하세요."}
+            {workspaceViewStep === 1 && "각 실험에서 얻은 값을 입력하고 결과 저장을 눌러 분석 준비를 마치세요."}
+            {workspaceViewStep === 2 && "결론 요약을 먼저 보고, 중요한 조건과 다음 실험 추천을 확인하세요."}
           </p>
           <div className="workspace-guide-list">
             {workspaceSteps.map((step, index) => (
               <span
                 className={
-                  index === workspaceStep
+                  index === workspaceViewStep
                     ? "active"
-                    : index < workspaceStep
+                    : index < workspaceViewStep
                       ? "complete"
                       : ""
                 }
@@ -3189,7 +3277,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="card report-card">
+      <section className="card report-card" ref={reportSectionRef} tabIndex={-1}>
         <div className="card-heading">
           <div>
             <span>Report</span>
