@@ -1014,29 +1014,37 @@ select:focus {
   margin-bottom: 0;
 }
 
-.wizard-progress span {
+.wizard-progress button {
+  min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   color: var(--muted);
+  box-shadow: none;
   font-size: 12px;
   font-weight: 800;
   padding: 10px 12px;
   text-align: center;
 }
 
-.wizard-progress span.active {
+.wizard-progress button:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: #f8fafb;
+  color: var(--accent-strong);
+}
+
+.wizard-progress button.active {
   border-color: rgba(15, 118, 110, 0.42);
   background: var(--accent-soft);
   color: var(--accent-strong);
   box-shadow: none;
 }
 
-.wizard-progress span.complete {
+.wizard-progress button.complete {
   color: var(--accent-strong);
 }
 
-.compact-progress span {
+.compact-progress button {
   display: inline-flex;
   align-items: center;
   justify-content: center;

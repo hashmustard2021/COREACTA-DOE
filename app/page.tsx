@@ -2558,9 +2558,16 @@ export default function Home() {
         </div>
         <div className="wizard-progress compact-progress" aria-label="실험 생성 단계">
           {guidedWizardSteps.map((step, index) => (
-            <span className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""} key={step} title={step}>
+            <button
+              aria-current={index === wizardStep ? "step" : undefined}
+              className={index === wizardStep ? "active" : index < wizardStep ? "complete" : ""}
+              key={step}
+              onClick={() => goToWizardStep(index)}
+              title={`${index + 1}. ${step} 단계로 이동`}
+              type="button"
+            >
               {index + 1}
-            </span>
+            </button>
           ))}
         </div>
 
