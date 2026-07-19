@@ -2583,14 +2583,20 @@ export default function Home() {
               {wizardStep === projectNameStep && "나중에 다시 찾기 쉬운 이름을 붙여주세요."}
               {wizardStep === summaryStep && "입력한 조건과 측정 결과를 확인한 뒤 실험표를 생성합니다."}
             </p>
-            {wizardStep === summaryStep && (
-              <div className="wizard-side-checklist" aria-label="실험표 생성 전 확인 순서">
-                <span className="complete">조건 선택 <b>완료</b></span>
-                <span className="complete">값 입력 <b>완료</b></span>
-                <span className="complete">결과 설정 <b>완료</b></span>
-                <span className="active">실험표 생성 <b>현재</b></span>
-              </div>
-            )}
+            <div className="wizard-side-checklist" aria-label="실험 설정 진행 상태">
+              {["조건 선택", "값 입력", "결과 설정", "실험표 생성"].map((step, index) => {
+                const status = index === wizardPhaseIndex ? "현재" : index < wizardPhaseIndex ? "완료" : "대기";
+                return (
+                  <span
+                    className={index === wizardPhaseIndex ? "active" : index < wizardPhaseIndex ? "complete" : ""}
+                    key={step}
+                  >
+                    {step}
+                    <b>{status}</b>
+                  </span>
+                );
+              })}
+            </div>
           </div>
 
           <div className="single-input-panel">

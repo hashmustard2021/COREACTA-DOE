@@ -1114,8 +1114,17 @@ select:focus {
   color: var(--accent-strong);
 }
 
+.wizard-side-checklist span.active b {
+  color: var(--accent-strong);
+}
+
 .wizard-side-checklist span.complete b {
   color: var(--accent-strong);
+}
+
+.wizard-side-checklist b {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .single-input-panel {
