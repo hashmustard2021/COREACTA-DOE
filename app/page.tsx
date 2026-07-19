@@ -58,6 +58,16 @@ function buildGuidedWizardSteps(factorCount: number) {
   return [...conditionSteps, ...valueSteps, "측정 결과", "목표", "프로젝트명", "실험표 생성"];
 }
 
+function getWizardPhaseIndex(step: number, factorCount: number) {
+  const resultNameStep = factorCount * 2;
+  const summaryStep = resultNameStep + 3;
+
+  if (step < factorCount) return 0;
+  if (step < resultNameStep) return 1;
+  if (step < summaryStep) return 2;
+  return 3;
+}
+
 function expectedDesignRunCount(factorCount: number, includesCenterPoints: boolean) {
   const baseRunCount = factorCount >= 4 ? 8 : 2 ** factorCount;
   return baseRunCount + (includesCenterPoints ? 3 : 0);
@@ -1318,8 +1328,7 @@ export default function Home() {
   const activeTourStep = tourSteps[Math.min(tourStep, tourSteps.length - 1)];
   const showTour = currentUser && isIntroComplete && !isTourDismissed && activeTourStep;
   const introSteps = ["소개", "목표", "조건", "분석", "시작"];
-  const wizardPhaseIndex =
-    wizardStep < factorCount ? 0 : wizardStep < resultNameStep ? 1 : wizardStep < summaryStep ? 2 : 3;
+  const wizardPhaseIndex = getWizardPhaseIndex(wizardStep, factorCount);
   const conditionStepIndex = wizardStep >= 0 && wizardStep < factorCount ? wizardStep : null;
   const valueStepIndex =
     wizardStep >= factorCount && wizardStep < resultNameStep ? wizardStep - factorCount : null;
@@ -1616,7 +1625,11 @@ export default function Home() {
         return errors;
       }, {}),
     );
-    setWizardStep((current) => Math.min(current, buildGuidedWizardSteps(clampedCount).length - 1));
+    setWizardStep((current) => {
+      const clampedStep = Math.min(current, buildGuidedWizardSteps(clampedCount).length - 1);
+      setTourStep(getWizardPhaseIndex(clampedStep, clampedCount));
+      return clampedStep;
+    });
     setSurfaceData(null);
     setErrorText("");
     setStatusText("");
@@ -1627,7 +1640,7 @@ export default function Home() {
     setStatusText("");
     const clampedStep = Math.max(0, Math.min(nextStep, wizardLastStep));
     setWizardStep(clampedStep);
-    setTourStep(Math.min(clampedStep, 3));
+    setTourStep(getWizardPhaseIndex(clampedStep, factorCount));
   }
 
   function proceedFromConditionDetail(index: number) {
@@ -3298,7 +3311,7 @@ export default function Home() {
                 </HelpTip>
               </h3>
               <div className="table-scroll">
-                <table>
+                <table className="anova-table">
                   <thead>
                     <tr>
                       <th>조건 (Factor)</th>

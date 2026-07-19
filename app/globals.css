@@ -2049,6 +2049,13 @@ select:focus {
   border-radius: 8px;
 }
 
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
 .compact-wrap {
   max-width: 540px;
 }
@@ -2391,10 +2398,41 @@ tbody tr:last-child td {
 .stats-card,
 .anova-card {
   grid-column: 1 / -1;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfd;
   padding: 14px;
+}
+
+.anova-card {
+  overflow: hidden;
+}
+
+.anova-table {
+  min-width: 560px;
+}
+
+.anova-table th,
+.anova-table td {
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.anova-table .numeric-column,
+.anova-table .numeric-cell {
+  width: 18%;
+  white-space: nowrap;
+}
+
+.anova-table th:first-child,
+.anova-table td:first-child {
+  width: 34%;
+}
+
+.anova-table th:last-child,
+.anova-table td:last-child {
+  width: 30%;
 }
 
 .stats-card p {
