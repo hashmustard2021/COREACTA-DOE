@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Factor, Project
+from .models import AnalyticsEvent, Factor, Project, VisitorSession
 from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
@@ -70,6 +70,52 @@ def auth_login(request):
 def auth_logout(request):
     logout(request)
     return api_success({})
+
+
+@api_view(["POST"])
+def analytics_event(request):
+    """Record a privacy-preserving acquisition and product-use event."""
+    session_id = request.data.get("session_id")
+    event_name = request.data.get("event_name")
+    if not session_id or event_name not in dict(AnalyticsEvent.EVENT_CHOICES):
+        return api_error("Invalid analytics event.")
+
+    try:
+        visitor_session, created = VisitorSession.objects.get_or_create(
+            session_id=session_id,
+            defaults={
+                "landing_path": str(request.data.get("landing_path", ""))[:500],
+                "referrer_url": str(request.data.get("referrer_url", ""))[:1000],
+                "referrer_source": str(request.data.get("referrer_source", ""))[:120],
+                "utm_source": str(request.data.get("utm_source", ""))[:120],
+                "utm_medium": str(request.data.get("utm_medium", ""))[:120],
+                "utm_campaign": str(request.data.get("utm_campaign", ""))[:160],
+                "user": request.user if request.user.is_authenticated else None,
+            },
+        )
+    except (TypeError, ValueError):
+        return api_error("Invalid analytics session.")
+
+    changed_fields = []
+    if request.user.is_authenticated and visitor_session.user_id != request.user.id:
+        visitor_session.user = request.user
+        changed_fields.append("user")
+    if not created:
+        visitor_session.save(update_fields=[*changed_fields, "last_seen_at"])
+
+    project = None
+    project_id = request.data.get("project_id")
+    if project_id and request.user.is_authenticated:
+        project = Project.objects.filter(pk=project_id, owner=request.user).first()
+
+    AnalyticsEvent.objects.create(
+        session=visitor_session,
+        user=request.user if request.user.is_authenticated else None,
+        project=project,
+        event_name=event_name,
+        path=str(request.data.get("path", ""))[:500],
+    )
+    return api_success({"recorded": True}, status_code=status.HTTP_201_CREATED)
 
 
 @api_view(["GET", "POST"])

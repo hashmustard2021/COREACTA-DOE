@@ -1,8 +1,76 @@
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
+
+class VisitorSession(models.Model):
+    session_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="doe_visitor_sessions", null=True, blank=True, on_delete=models.SET_NULL)
+    landing_path = models.CharField(max_length=500, blank=True)
+    referrer_url = models.URLField(max_length=1000, blank=True)
+    referrer_source = models.CharField(max_length=120, blank=True, db_index=True)
+    utm_source = models.CharField(max_length=120, blank=True, db_index=True)
+    utm_medium = models.CharField(max_length=120, blank=True)
+    utm_campaign = models.CharField(max_length=160, blank=True, db_index=True)
+    first_seen_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-first_seen_at"]
+
+    def __str__(self):
+        return f"{self.utm_source or self.referrer_source or 'direct'} - {self.session_id}"
+
+
+class AnalyticsEvent(models.Model):
+    HOME_VIEWED = "home_viewed"
+    WIZARD_STARTED = "wizard_started"
+    DESIGN_GENERATED = "design_generated"
+    RESULTS_SAVED = "results_saved"
+    REPORT_VIEWED = "report_viewed"
+    EVENT_CHOICES = [
+        (HOME_VIEWED, "Home viewed"),
+        (WIZARD_STARTED, "Wizard started"),
+        (DESIGN_GENERATED, "Design generated"),
+        (RESULTS_SAVED, "Results saved"),
+        (REPORT_VIEWED, "Report viewed"),
+    ]
+
+    session = models.ForeignKey(
+        VisitorSession,
+        related_name="events",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="doe_analytics_events",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    project = models.ForeignKey(
+        "Project",
+        related_name="analytics_events",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    event_name = models.CharField(max_length=40, choices=EVENT_CHOICES, db_index=True)
+    path = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["event_name", "created_at"]),
+            models.Index(fields=["session", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_event_name_display()} - {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class Project(models.Model):

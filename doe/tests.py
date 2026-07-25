@@ -5,7 +5,7 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import DesignRun, Factor, Project, Result, ResultHistory
+from .models import AnalyticsEvent, DesignRun, Factor, Project, Result, ResultHistory, VisitorSession
 
 
 class HealthApiTests(APITestCase):
@@ -17,7 +17,34 @@ class HealthApiTests(APITestCase):
         self.assertEqual(response.data["data"], {"status": "ok"})
 
 
+
+class AnalyticsApiTests(APITestCase):
+    def test_records_anonymous_acquisition_and_event(self):
+        response = self.client.post(
+            "/api/analytics/events/",
+            {
+                "session_id": "2e3699e2-4e2a-4ea3-b44e-9dc282fa7ff6",
+                "event_name": "home_viewed",
+                "landing_path": "/?utm_source=newsletter",
+                "referrer_url": "https://example.com/article",
+                "referrer_source": "example.com",
+                "utm_source": "newsletter",
+                "utm_medium": "email",
+                "utm_campaign": "launch",
+                "path": "/",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        session = VisitorSession.objects.get()
+        self.assertEqual(session.referrer_source, "example.com")
+        self.assertEqual(session.utm_campaign, "launch")
+        event = AnalyticsEvent.objects.get()
+        self.assertEqual(event.event_name, AnalyticsEvent.HOME_VIEWED)
+        self.assertEqual(event.session, session)
 class SuzukiCouplingDoeApiTests(APITestCase):
+
     project_payload = {
         "name": "Suzuki coupling optimization",
         "description": "DOE test",

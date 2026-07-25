@@ -1,7 +1,32 @@
 from django.contrib import admin
 
-from .models import DesignRun, Factor, Project, Result, ResultHistory
+from .models import AnalyticsEvent, DesignRun, Factor, Project, Result, ResultHistory, VisitorSession
 
+
+@admin.register(VisitorSession)
+class VisitorSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "session_id", "referrer_source", "utm_source", "utm_campaign",
+        "landing_path", "user", "first_seen_at", "last_seen_at",
+    )
+    list_filter = ("referrer_source", "utm_source", "utm_medium", "utm_campaign", "first_seen_at")
+    search_fields = ("session_id", "referrer_url", "landing_path", "user__username")
+    readonly_fields = ("session_id", "first_seen_at", "last_seen_at")
+    ordering = ("-first_seen_at",)
+
+
+@admin.register(AnalyticsEvent)
+class AnalyticsEventAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "event_name", "source", "user", "project", "path")
+    list_filter = ("event_name", "created_at", "session__referrer_source", "session__utm_source")
+    search_fields = ("session__session_id", "session__referrer_url", "user__username", "project__name")
+    list_select_related = ("session", "user", "project")
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    @admin.display(description="Source")
+    def source(self, obj):
+        return obj.session.utm_source or obj.session.referrer_source or "direct"
 
 class FactorInline(admin.TabularInline):
     model = Factor

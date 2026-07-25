@@ -44,6 +44,7 @@ const API_BASE_URL =
       ? ""
       : "http://localhost:8000";
 const LAST_WORKSPACE_PROJECT_KEY = "coreacta:lastWorkspaceProjectId";
+const ANALYTICS_SESSION_KEY = "coreacta:analyticsSessionId";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -92,6 +93,51 @@ function readRememberedWorkspaceProjectId() {
   return Number.isInteger(projectId) && projectId > 0 ? projectId : null;
 }
 
+function getAnalyticsSessionId() {
+  if (typeof window === "undefined") return "";
+  const existing = window.localStorage.getItem(ANALYTICS_SESSION_KEY);
+  if (existing) return existing;
+  const sessionId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  window.localStorage.setItem(ANALYTICS_SESSION_KEY, sessionId);
+  return sessionId;
+}
+
+function getReferrerSource(referrer: string) {
+  if (!referrer) return "";
+  try {
+    return new URL(referrer).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+async function trackAnalyticsEvent(eventName: string, projectId?: number) {
+  if (typeof window === "undefined") return;
+  const sessionId = getAnalyticsSessionId();
+  if (!sessionId) return;
+  const currentUrl = new URL(window.location.href);
+  const payload = {
+    session_id: sessionId,
+    event_name: eventName,
+    landing_path: `${currentUrl.pathname}${currentUrl.search}`,
+    referrer_url: document.referrer,
+    referrer_source: getReferrerSource(document.referrer),
+    utm_source: currentUrl.searchParams.get("utm_source") ?? "",
+    utm_medium: currentUrl.searchParams.get("utm_medium") ?? "",
+    utm_campaign: currentUrl.searchParams.get("utm_campaign") ?? "",
+    path: currentUrl.pathname,
+    ...(projectId ? { project_id: projectId } : {}),
+  };
+
+  try {
+    await apiRequest("/api/analytics/events/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Analytics must never block the experiment workflow.
+  }
+}
 const objectiveSuggestions = [
   { label: "수율 높이기", prompt: "수율을 높이고 싶어요" },
   { label: "점도 낮추기", prompt: "점도를 낮추고 싶어요" },
@@ -1433,6 +1479,13 @@ export default function Home() {
   }, [initializeAuth]);
 
   useEffect(() => {
+    const eventKey = "coreacta:analytics:homeViewed";
+    if (window.sessionStorage.getItem(eventKey)) return;
+    window.sessionStorage.setItem(eventKey, "1");
+    void trackAnalyticsEvent("home_viewed");
+  }, []);
+
+  useEffect(() => {
     if (
       currentUser &&
       hasTriedWorkspaceRestore &&
@@ -1851,6 +1904,7 @@ export default function Home() {
 
       setProject(createdProject);
       rememberWorkspaceProject(createdProject.id);
+      void trackAnalyticsEvent("design_generated", createdProject.id);
       setDesignRuns(design);
       setIsIntroComplete(true);
       setIsSetupStarted(true);
@@ -1958,6 +2012,7 @@ export default function Home() {
   function startNewExperiment(intentOverride?: string) {
     const nextIntent = typeof intentOverride === "string" ? intentOverride : experimentIntent;
     const inferredObjective = inferObjectiveFromText(nextIntent);
+    void trackAnalyticsEvent("wizard_started");
     resetProjectState();
     setExperimentIntent(nextIntent);
     if (nextIntent.trim()) {
@@ -2087,6 +2142,8 @@ export default function Home() {
       setReport(nextReport);
       setResultHistory(await loadResultHistory(project.id));
       setSurfaceData(null);
+      void trackAnalyticsEvent("results_saved", project.id);
+      void trackAnalyticsEvent("report_viewed", project.id);
       setSurfaceMessage("예측 그래프 갱신를 눌러 contour plot을 생성하세요.");
       setStatusText(`실험 결과 ${filledRuns.length}개를 저장했어요.`);
       void loadProjects();
@@ -2106,6 +2163,7 @@ export default function Home() {
     try {
       setReport(await apiRequest<Report>(`/api/projects/${project.id}/report/`));
       setStatusText("분석 결과를 불러왔어요.");
+      void trackAnalyticsEvent("report_viewed", project.id);
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : "다시 시도하면 분석 결과를 볼 수 있어요.");
     } finally {
