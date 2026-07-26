@@ -2715,7 +2715,12 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .workspace-guide-panel,
+  .workspace-guide-panel {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+  }
+
   .workspace-summary-panel {
     position: static;
   }
@@ -2894,6 +2899,28 @@ tbody tr:last-child td {
 
   .card {
     padding: 15px;
+  }
+
+  .workspace-guide-panel {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .workspace-guide-panel h2 {
+    font-size: 22px;
+  }
+
+  .workspace-guide-panel p {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .workspace-guide-list {
+    gap: 7px;
+  }
+
+  .workspace-guide-list span {
+    padding: 9px 10px;
   }
 
   .button-group {
