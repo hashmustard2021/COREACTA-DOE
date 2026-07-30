@@ -1,8 +1,13 @@
 import csv
 import logging
+import secrets
 from io import StringIO
+from urllib.parse import urlencode
 
-from django.contrib.auth import login, logout
+from django.conf import settings
+from django.contrib.auth import get_user_model, login, logout
+from django.shortcuts import redirect
+from django.utils.crypto import constant_time_compare
 from django.middleware.csrf import get_token
 from django.db import OperationalError
 from django.http import Http404, HttpResponse
@@ -12,6 +17,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import AnalyticsEvent, Factor, Project, VisitorSession
+from .google_oauth import (
+    GoogleOAuthError,
+    authorization_url,
+    exchange_code,
+    google_login_enabled,
+    verify_identity_token,
+)
 from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
@@ -64,6 +76,47 @@ def auth_login(request):
     user = serializer.validated_data["user"]
     login(request, user)
     return api_success(user_payload(user))
+
+
+@api_view(["GET"])
+def auth_providers(request):
+    return api_success({"google": google_login_enabled()})
+
+
+@api_view(["GET"])
+def google_login(request):
+    if not google_login_enabled():
+        return redirect(google_redirect_url("Google login is not configured yet."))
+
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    request.session["google_oauth_state"] = state
+    request.session["google_oauth_nonce"] = nonce
+    return redirect(authorization_url(state, nonce))
+
+
+@api_view(["GET"])
+def google_callback(request):
+    error = request.GET.get("error")
+    if error:
+        return redirect(google_redirect_url("Google 로그인을 취소했어요."))
+
+    state = request.GET.get("state", "")
+    expected_state = request.session.pop("google_oauth_state", "")
+    nonce = request.session.pop("google_oauth_nonce", "")
+    code = request.GET.get("code", "")
+    if not code or not expected_state or not constant_time_compare(state, expected_state):
+        return redirect(google_redirect_url("Google 로그인 요청을 확인할 수 없어요. 다시 시도해 주세요."))
+
+    try:
+        identity = verify_identity_token(exchange_code(code), nonce)
+    except GoogleOAuthError as error:
+        security_logger.warning("google_login_failed reason=%s", error)
+        return redirect(google_redirect_url("Google 로그인을 완료하지 못했어요. 다시 시도해 주세요."))
+
+    user = get_or_create_google_user(identity)
+    login(request, user)
+    return redirect(settings.GOOGLE_OAUTH_SUCCESS_URL)
 
 
 @api_view(["POST"])
@@ -396,6 +449,47 @@ def require_authenticated(request):
 
 def user_payload(user):
     return {"id": user.id, "username": user.username, "email": user.email}
+
+
+def google_redirect_url(message):
+    separator = "&" if "?" in settings.GOOGLE_OAUTH_SUCCESS_URL else "?"
+    return f"{settings.GOOGLE_OAUTH_SUCCESS_URL}{separator}{urlencode({'google_auth_error': message})}"
+
+
+def get_or_create_google_user(identity):
+    """Link by verified email so an existing account keeps its projects."""
+    user_model = get_user_model()
+    email = identity["email"].strip().lower()
+    user = user_model.objects.filter(email__iexact=email).first()
+    if user:
+        return user
+
+    username_field = user_model.USERNAME_FIELD
+    username_max_length = user_model._meta.get_field(username_field).max_length or 150
+    local_part = email.split("@", 1)[0]
+    base_username = "".join(
+        character if character.isalnum() or character in {".", "_", "-"} else "-"
+        for character in local_part
+    ).strip(".-_") or "researcher"
+    base_username = base_username[:username_max_length]
+    username = base_username
+    suffix = 2
+    while user_model.objects.filter(**{username_field: username}).exists():
+        suffix_text = f"-{suffix}"
+        username = f"{base_username[:username_max_length - len(suffix_text)]}{suffix_text}"
+        suffix += 1
+
+    user = user_model(
+        **{
+            username_field: username,
+            "email": email,
+            "first_name": identity.get("given_name", "")[:150],
+            "last_name": identity.get("family_name", "")[:150],
+        }
+    )
+    user.set_unusable_password()
+    user.save()
+    return user
 
 
 def api_success(data, status_code=status.HTTP_200_OK, message=""):

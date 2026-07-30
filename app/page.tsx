@@ -151,6 +151,10 @@ type User = {
   email: string;
 };
 
+type AuthProviders = {
+  google: boolean;
+};
+
 type FactorInput = {
   idx: number;
   factor_type: "continuous" | "categorical";
@@ -1157,6 +1161,7 @@ export default function Home() {
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [isGoogleLoginEnabled, setIsGoogleLoginEnabled] = useState(false);
   const [experimentIntent, setExperimentIntent] = useState("");
   const [projectName, setProjectName] = useState("New experiment");
   const [projectSlogan, setProjectSlogan] = useState("감이 아니라 근거로 실험하세요.");
@@ -1464,6 +1469,8 @@ export default function Home() {
   const initializeAuth = useCallback(async () => {
     try {
       await ensureCsrfToken();
+      const providers = await apiRequest<AuthProviders>("/api/auth/providers/");
+      setIsGoogleLoginEnabled(providers.google);
       const user = await apiRequest<User>("/api/auth/me/");
       setCurrentUser(user);
       await loadProjects();
@@ -1477,6 +1484,16 @@ export default function Home() {
   useEffect(() => {
     void initializeAuth();
   }, [initializeAuth]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const googleAuthError = searchParams.get("google_auth_error");
+    if (!googleAuthError) return;
+    setErrorText(googleAuthError);
+    searchParams.delete("google_auth_error");
+    const nextSearch = searchParams.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`);
+  }, []);
 
   useEffect(() => {
     const eventKey = "coreacta:analytics:homeViewed";
@@ -1555,6 +1572,10 @@ export default function Home() {
     } finally {
       setIsBusy(false);
     }
+  }
+
+  function handleGoogleLogin() {
+    window.location.assign(`${API_BASE_URL}/api/auth/google/login/`);
   }
 
   async function handleLogout() {
@@ -2480,6 +2501,20 @@ export default function Home() {
                 required
               />
             </label>
+            {isGoogleLoginEnabled && (
+              <>
+                <div className="auth-divider" aria-hidden="true"><span>또는</span></div>
+                <button
+                  className="google-login-button"
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isBusy}
+                >
+                  <span className="google-login-mark" aria-hidden="true">G</span>
+                  Google 계정으로 계속하기
+                </button>
+              </>
+            )}
           </form>
         </>
       )}

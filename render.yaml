@@ -20,6 +20,14 @@ services:
         fromDatabase:
           name: coreacta-doe-db
           property: connectionString
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        value: https://coreacta.net/api/auth/google/callback/
+      - key: GOOGLE_OAUTH_SUCCESS_URL
+        value: https://coreacta.net/
 
 databases:
   - name: coreacta-doe-db

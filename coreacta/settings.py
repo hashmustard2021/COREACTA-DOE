@@ -146,6 +146,19 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
+    "GOOGLE_OAUTH_REDIRECT_URI",
+    "http://localhost:8000/api/auth/google/callback/"
+    if DEBUG
+    else "https://coreacta.net/api/auth/google/callback/",
+).strip()
+GOOGLE_OAUTH_SUCCESS_URL = os.getenv(
+    "GOOGLE_OAUTH_SUCCESS_URL",
+    "http://localhost:3000/" if DEBUG else "https://coreacta.net/",
+).strip()
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True

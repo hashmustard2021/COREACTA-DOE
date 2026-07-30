@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import override_settings
@@ -15,6 +16,45 @@ class HealthApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data["success"])
         self.assertEqual(response.data["data"], {"status": "ok"})
+
+
+class GoogleAuthenticationApiTests(APITestCase):
+    @override_settings(GOOGLE_OAUTH_CLIENT_ID="client-id", GOOGLE_OAUTH_CLIENT_SECRET="client-secret")
+    def test_google_provider_is_enabled_when_credentials_exist(self):
+        response = self.client.get("/api/auth/providers/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["data"]["google"])
+
+    @override_settings(
+        GOOGLE_OAUTH_CLIENT_ID="client-id",
+        GOOGLE_OAUTH_CLIENT_SECRET="client-secret",
+        GOOGLE_OAUTH_SUCCESS_URL="http://localhost:3000/",
+    )
+    @patch("doe.views.verify_identity_token")
+    @patch("doe.views.exchange_code")
+    def test_google_callback_creates_user_and_starts_existing_session(self, exchange_code, verify_token):
+        verify_token.return_value = {
+            "sub": "google-subject-1",
+            "email": "researcher@example.com",
+            "email_verified": True,
+            "given_name": "Researcher",
+            "family_name": "Kim",
+        }
+        exchange_code.return_value = "verified-token"
+
+        login_start = self.client.get("/api/auth/google/login/")
+        state = self.client.session["google_oauth_state"]
+        callback = self.client.get(f"/api/auth/google/callback/?code=code-1&state={state}")
+        me = self.client.get("/api/auth/me/")
+
+        self.assertEqual(login_start.status_code, status.HTTP_302_FOUND)
+        self.assertIn("accounts.google.com", login_start["Location"])
+        self.assertEqual(callback.status_code, status.HTTP_302_FOUND)
+        self.assertEqual(callback["Location"], "http://localhost:3000/")
+        self.assertEqual(me.data["data"]["email"], "researcher@example.com")
+        user = User.objects.get(email="researcher@example.com")
+        self.assertFalse(user.has_usable_password())
 
 
 
