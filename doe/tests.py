@@ -6,7 +6,7 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import AnalyticsEvent, DesignRun, Factor, Project, Result, ResultHistory, VisitorSession
+from .models import AnalyticsEvent, DesignRun, Factor, Feedback, Project, Result, ResultHistory, VisitorSession
 
 
 class HealthApiTests(APITestCase):
@@ -83,6 +83,40 @@ class AnalyticsApiTests(APITestCase):
         event = AnalyticsEvent.objects.get()
         self.assertEqual(event.event_name, AnalyticsEvent.HOME_VIEWED)
         self.assertEqual(event.session, session)
+
+
+class FeedbackApiTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="feedback_user", password="pass-1")
+
+    def test_authenticated_user_can_submit_feedback_with_page_context(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/feedback/",
+            {
+                "category": Feedback.IMPROVEMENT,
+                "message": "결과 입력 화면에서 단위를 더 명확히 보여주세요.",
+                "page": "workspace",
+                "step": "결과 입력",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        feedback = Feedback.objects.get()
+        self.assertEqual(feedback.user, self.user)
+        self.assertEqual(feedback.status, Feedback.NEW)
+        self.assertEqual(feedback.page, "workspace")
+
+    def test_anonymous_user_cannot_submit_feedback(self):
+        response = self.client.post(
+            "/api/feedback/",
+            {"category": Feedback.INQUIRY, "message": "도움이 필요해요."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 class SuzukiCouplingDoeApiTests(APITestCase):
 
     project_payload = {

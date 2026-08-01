@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AnalyticsEvent, DesignRun, Factor, Project, Result, ResultHistory, VisitorSession
+from .models import AnalyticsEvent, DesignRun, Factor, Feedback, Project, Result, ResultHistory, VisitorSession
 
 
 @admin.register(VisitorSession)
@@ -27,6 +27,16 @@ class AnalyticsEventAdmin(admin.ModelAdmin):
     @admin.display(description="Source")
     def source(self, obj):
         return obj.session.utm_source or obj.session.referrer_source or "direct"
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "category", "status", "user", "project", "page", "step")
+    list_filter = ("category", "status", "created_at")
+    search_fields = ("message", "admin_note", "user__username", "user__email", "project__name")
+    list_select_related = ("user", "project")
+    readonly_fields = ("user", "project", "page", "step", "created_at", "updated_at")
+    ordering = ("status", "-created_at")
 
 class FactorInline(admin.TabularInline):
     model = Factor

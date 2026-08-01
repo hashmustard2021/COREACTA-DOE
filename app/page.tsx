@@ -155,6 +155,8 @@ type AuthProviders = {
   google: boolean;
 };
 
+type FeedbackCategory = "inquiry" | "bug" | "improvement";
+
 type FactorInput = {
   idx: number;
   factor_type: "continuous" | "categorical";
@@ -1194,6 +1196,10 @@ export default function Home() {
   const [tourStep, setTourStep] = useState(0);
   const [isTourDismissed, setIsTourDismissed] = useState(false);
   const [factorTypeHelp, setFactorTypeHelp] = useState<FactorInput["factor_type"] | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>("improvement");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
   const [surfaceMessage, setSurfaceMessage] = useState(
@@ -1571,6 +1577,40 @@ export default function Home() {
       setErrorText(error instanceof Error ? error.message : "다시 시도하면 로그인할 수 있어요.");
     } finally {
       setIsBusy(false);
+    }
+  }
+
+  async function handleFeedbackSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsFeedbackSubmitting(true);
+    setErrorText("");
+    setStatusText("");
+
+    const page = project ? "workspace" : isSetupStarted ? "wizard" : "home";
+    const step = project
+      ? ["실험표 확인", "결과 입력", "분석 보기"][activeWorkspaceStep] ?? "Workspace"
+      : isSetupStarted
+        ? guidedWizardSteps[wizardStep] ?? "실험 설정"
+        : "시작 화면";
+
+    try {
+      await apiRequest<{ id: number }>("/api/feedback/", {
+        method: "POST",
+        body: JSON.stringify({
+          category: feedbackCategory,
+          message: feedbackMessage,
+          page,
+          step,
+          project_id: project?.id ?? null,
+        }),
+      });
+      setFeedbackMessage("");
+      setIsFeedbackOpen(false);
+      setStatusText("의견을 보내주셔서 감사합니다.");
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "다시 시도하면 의견을 보낼 수 있어요.");
+    } finally {
+      setIsFeedbackSubmitting(false);
     }
   }
 
@@ -3872,6 +3912,67 @@ export default function Home() {
               알겠어요
             </button>
           </div>
+        </div>
+      )}
+
+      {currentUser && (
+        <button
+          className="feedback-float-button"
+          type="button"
+          onClick={() => setIsFeedbackOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <Send size={16} aria-hidden="true" />
+          문의·개선 제안
+        </button>
+      )}
+
+      {isFeedbackOpen && (
+        <div className="feedback-backdrop" role="presentation" onClick={() => setIsFeedbackOpen(false)}>
+          <form
+            className="feedback-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feedback-title"
+            onSubmit={handleFeedbackSubmit}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="feedback-close"
+              type="button"
+              onClick={() => setIsFeedbackOpen(false)}
+              aria-label="문의 창 닫기"
+            >
+              <X size={18} />
+            </button>
+            <span>문의·개선 제안</span>
+            <h2 id="feedback-title">무엇이 불편했나요?</h2>
+            <p>현재 화면과 진행 단계만 함께 전달돼요. 실험 데이터는 보내지 않아요.</p>
+            <label className="field">
+              <span>유형</span>
+              <select value={feedbackCategory} onChange={(event) => setFeedbackCategory(event.target.value as FeedbackCategory)}>
+                <option value="inquiry">사용 방법 문의</option>
+                <option value="bug">오류 신고</option>
+                <option value="improvement">개선 제안</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>내용</span>
+              <textarea
+                value={feedbackMessage}
+                onChange={(event) => setFeedbackMessage(event.target.value)}
+                placeholder="불편했던 점이나 바라는 점을 자유롭게 적어주세요."
+                maxLength={4000}
+                rows={6}
+                required
+                autoFocus
+              />
+            </label>
+            <button className="feedback-submit" type="submit" disabled={isFeedbackSubmitting}>
+              <Send size={16} aria-hidden="true" />
+              {isFeedbackSubmitting ? "보내는 중..." : "의견 보내기"}
+            </button>
+          </form>
         </div>
       )}
     </main>

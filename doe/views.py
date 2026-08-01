@@ -24,6 +24,7 @@ from .google_oauth import (
     google_login_enabled,
     verify_identity_token,
 )
+from .feedback_serializers import FeedbackCreateSerializer
 from .pdf import build_project_report_pdf
 from .serializers import (
     DesignRunSerializer,
@@ -123,6 +124,19 @@ def google_callback(request):
 def auth_logout(request):
     logout(request)
     return api_success({})
+
+
+@api_view(["POST"])
+def feedback(request):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    serializer = FeedbackCreateSerializer(data=request.data, context={"request": request})
+    if not serializer.is_valid():
+        return api_error(format_validation_errors(serializer.errors))
+    feedback_record = serializer.save()
+    return api_success({"id": feedback_record.id}, status_code=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])

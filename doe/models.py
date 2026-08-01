@@ -73,6 +73,52 @@ class AnalyticsEvent(models.Model):
         return f"{self.get_event_name_display()} - {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class Feedback(models.Model):
+    INQUIRY = "inquiry"
+    BUG = "bug"
+    IMPROVEMENT = "improvement"
+    CATEGORY_CHOICES = [
+        (INQUIRY, "사용 방법 문의"),
+        (BUG, "오류 신고"),
+        (IMPROVEMENT, "개선 제안"),
+    ]
+    NEW = "new"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    STATUS_CHOICES = [
+        (NEW, "새 문의"),
+        (IN_PROGRESS, "확인 중"),
+        (RESOLVED, "처리 완료"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="doe_feedback",
+        on_delete=models.CASCADE,
+    )
+    project = models.ForeignKey(
+        "Project",
+        related_name="feedback",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    message = models.TextField(max_length=4000)
+    page = models.CharField(max_length=80, blank=True)
+    step = models.CharField(max_length=160, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=NEW)
+    admin_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["status", "-created_at"]
+
+    def __str__(self):
+        return f"{self.get_category_display()} - {self.user} - {self.created_at:%Y-%m-%d %H:%M}"
+
+
 class Project(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
