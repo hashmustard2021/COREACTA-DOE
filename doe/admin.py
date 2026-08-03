@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 
 from .models import AnalyticsEvent, DesignRun, Factor, Feedback, Project, Result, ResultHistory, VisitorSession
 
@@ -31,12 +33,30 @@ class AnalyticsEventAdmin(admin.ModelAdmin):
 
 @admin.register(Feedback)
 class FeedbackAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "category", "status", "user", "project", "page", "step")
+    list_display = ("created_at", "category", "status", "user", "project", "has_attachment", "page", "step")
     list_filter = ("category", "status", "created_at")
     search_fields = ("message", "admin_note", "user__username", "user__email", "project__name")
     list_select_related = ("user", "project")
-    readonly_fields = ("user", "project", "page", "step", "created_at", "updated_at")
+    readonly_fields = (
+        "user", "project", "page", "step", "attachment_preview", "created_at", "updated_at",
+    )
     ordering = ("status", "-created_at")
+
+    @admin.display(boolean=True, description="Image")
+    def has_attachment(self, obj):
+        return bool(obj.attachment_data)
+
+    @admin.display(description="Attached image")
+    def attachment_preview(self, obj):
+        if not obj.attachment_data:
+            return "-"
+        url = reverse("feedback-attachment", args=[obj.pk])
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener"><img src="{}" alt="{}" style="max-width: 420px; max-height: 280px;" /></a>',
+            url,
+            url,
+            obj.attachment_name or "첨부 이미지",
+        )
 
 class FactorInline(admin.TabularInline):
     model = Factor

@@ -16,7 +16,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import AnalyticsEvent, Factor, Project, VisitorSession
+from .models import AnalyticsEvent, Factor, Feedback, Project, VisitorSession
 from .google_oauth import (
     GoogleOAuthError,
     authorization_url,
@@ -137,6 +137,29 @@ def feedback(request):
         return api_error(format_validation_errors(serializer.errors))
     feedback_record = serializer.save()
     return api_success({"id": feedback_record.id}, status_code=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+def feedback_attachment(request, feedback_id):
+    auth_response = require_authenticated(request)
+    if auth_response:
+        return auth_response
+
+    feedback_record = Feedback.objects.filter(pk=feedback_id).first()
+    if not feedback_record or (
+        feedback_record.user_id != request.user.id and not request.user.is_staff
+    ):
+        raise Http404("Feedback image not found.")
+    if not feedback_record.attachment_data:
+        raise Http404("Feedback has no image.")
+
+    response = HttpResponse(
+        bytes(feedback_record.attachment_data),
+        content_type=feedback_record.attachment_content_type,
+    )
+    response["Content-Disposition"] = f'inline; filename="{feedback_record.attachment_name}"'
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @api_view(["POST"])

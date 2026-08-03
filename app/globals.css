@@ -364,6 +364,23 @@ select:focus {
   resize: vertical;
 }
 
+.feedback-attachment-field input[type="file"] {
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.feedback-attachment-field small,
+.feedback-file-name {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.feedback-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .feedback-close {
   position: absolute;
   top: 14px;

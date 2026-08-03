@@ -13,6 +13,7 @@ urlpatterns = [
     path("auth/google/login/", views.google_login, name="google-login"),
     path("auth/google/callback/", views.google_callback, name="google-callback"),
     path("feedback/", views.feedback, name="feedback"),
+    path("feedback/<int:feedback_id>/attachment/", views.feedback_attachment, name="feedback-attachment"),
     path("projects/", views.projects, name="projects"),
     path("analytics/events/", views.analytics_event, name="analytics-event"),
     path("projects/<int:project_id>/", views.project_detail, name="project-detail"),

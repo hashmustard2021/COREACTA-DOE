@@ -1,7 +1,9 @@
+import base64
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -117,6 +119,28 @@ class FeedbackApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_feedback_image_is_saved_and_available_to_its_owner(self):
+        self.client.force_authenticate(user=self.user)
+        image = SimpleUploadedFile(
+            "screen.gif",
+            base64.b64decode("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="),
+            content_type="image/gif",
+        )
+
+        response = self.client.post(
+            "/api/feedback/",
+            {"category": Feedback.BUG, "message": "이미지 첨부 테스트", "attachment": image},
+            format="multipart",
+        )
+        feedback = Feedback.objects.get(pk=response.data["data"]["id"])
+        attachment_response = self.client.get(f"/api/feedback/{feedback.id}/attachment/")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(feedback.attachment_name, "screen.gif")
+        self.assertEqual(feedback.attachment_content_type, "image/gif")
+        self.assertEqual(attachment_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(attachment_response["Content-Type"], "image/gif")
 class SuzukiCouplingDoeApiTests(APITestCase):
 
     project_payload = {

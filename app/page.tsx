@@ -696,12 +696,13 @@ async function ensureCsrfToken(forceRefresh = false) {
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method?.toUpperCase() ?? "GET";
   const isUnsafeMethod = !["GET", "HEAD", "OPTIONS"].includes(method);
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
 
   async function buildHeaders(forceRefreshCsrf = false) {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       ...((init?.headers as Record<string, string> | undefined) ?? {}),
     };
+    if (!isFormData && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
 
     if (isUnsafeMethod) {
       const csrfToken = await ensureCsrfToken(forceRefreshCsrf);
@@ -1199,6 +1200,7 @@ export default function Home() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>("improvement");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackAttachment, setFeedbackAttachment] = useState<File | null>(null);
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   const [projectList, setProjectList] = useState<ProjectListItem[]>([]);
   const [surfaceData, setSurfaceData] = useState<SurfaceData | null>(null);
@@ -1594,17 +1596,19 @@ export default function Home() {
         : "시작 화면";
 
     try {
+      const formData = new FormData();
+      formData.append("category", feedbackCategory);
+      formData.append("message", feedbackMessage);
+      formData.append("page", page);
+      formData.append("step", step);
+      if (project) formData.append("project_id", String(project.id));
+      if (feedbackAttachment) formData.append("attachment", feedbackAttachment);
       await apiRequest<{ id: number }>("/api/feedback/", {
         method: "POST",
-        body: JSON.stringify({
-          category: feedbackCategory,
-          message: feedbackMessage,
-          page,
-          step,
-          project_id: project?.id ?? null,
-        }),
+        body: formData,
       });
       setFeedbackMessage("");
+      setFeedbackAttachment(null);
       setIsFeedbackOpen(false);
       setStatusText("의견을 보내주셔서 감사합니다.");
     } catch (error) {
@@ -2530,6 +2534,23 @@ export default function Home() {
                 autoComplete="username"
                 required
               />
+            </label>
+            <label className="field feedback-attachment-field">
+              <span>이미지 첨부 <small>선택 · 최대 5MB</small></span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  if (file && file.size > 5 * 1024 * 1024) {
+                    setErrorText("이미지는 5MB 이하로 올려 주세요.");
+                    event.target.value = "";
+                    return;
+                  }
+                  setFeedbackAttachment(file);
+                }}
+              />
+              {feedbackAttachment && <small className="feedback-file-name">{feedbackAttachment.name}</small>}
             </label>
             <label className="field">
               <span>Password</span>
