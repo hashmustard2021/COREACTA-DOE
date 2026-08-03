@@ -2535,23 +2535,6 @@ export default function Home() {
                 required
               />
             </label>
-            <label className="field feedback-attachment-field">
-              <span>이미지 첨부 <small>선택 · 최대 5MB</small></span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  if (file && file.size > 5 * 1024 * 1024) {
-                    setErrorText("이미지는 5MB 이하로 올려 주세요.");
-                    event.target.value = "";
-                    return;
-                  }
-                  setFeedbackAttachment(file);
-                }}
-              />
-              {feedbackAttachment && <small className="feedback-file-name">{feedbackAttachment.name}</small>}
-            </label>
             <label className="field">
               <span>Password</span>
               <input
@@ -3988,6 +3971,23 @@ export default function Home() {
                 required
                 autoFocus
               />
+            </label>
+            <label className="field feedback-attachment-field">
+              <span>이미지 첨부 <small>선택 · 최대 5MB</small></span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  if (file && file.size > 5 * 1024 * 1024) {
+                    setErrorText("이미지는 5MB 이하로 올려 주세요.");
+                    event.target.value = "";
+                    return;
+                  }
+                  setFeedbackAttachment(file);
+                }}
+              />
+              {feedbackAttachment && <small className="feedback-file-name">{feedbackAttachment.name}</small>}
             </label>
             <button className="feedback-submit" type="submit" disabled={isFeedbackSubmitting}>
               <Send size={16} aria-hidden="true" />
