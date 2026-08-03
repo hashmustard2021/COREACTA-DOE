@@ -1618,6 +1618,19 @@ export default function Home() {
     }
   }
 
+  function selectFeedbackAttachment(file: File | null) {
+    const allowedImageTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (file && !allowedImageTypes.includes(file.type)) {
+      setErrorText("PNG, JPEG, WebP, GIF 이미지만 올릴 수 있어요.");
+      return;
+    }
+    if (file && file.size > 5 * 1024 * 1024) {
+      setErrorText("이미지는 5MB 이하로 올려 주세요.");
+      return;
+    }
+    setFeedbackAttachment(file);
+  }
+
   function handleGoogleLogin() {
     window.location.assign(`${API_BASE_URL}/api/auth/google/login/`);
   }
@@ -3972,19 +3985,21 @@ export default function Home() {
                 autoFocus
               />
             </label>
-            <label className="field feedback-attachment-field">
+            <label
+              className="field feedback-attachment-field"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                selectFeedbackAttachment(event.dataTransfer.files?.[0] ?? null);
+              }}
+            >
               <span>이미지 첨부 <small>선택 · 최대 5MB</small></span>
+              <span className="feedback-drop-hint">이미지를 끌어 놓거나 파일을 선택하세요.</span>
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  if (file && file.size > 5 * 1024 * 1024) {
-                    setErrorText("이미지는 5MB 이하로 올려 주세요.");
-                    event.target.value = "";
-                    return;
-                  }
-                  setFeedbackAttachment(file);
+                  selectFeedbackAttachment(event.target.files?.[0] ?? null);
                 }}
               />
               {feedbackAttachment && <small className="feedback-file-name">{feedbackAttachment.name}</small>}
